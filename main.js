@@ -176,6 +176,63 @@ function init() {
     return [simpleCho, simpleJung, simpleJong].flatMap(jamo => [...(compositeToSimpleJamoMap[jamo] ?? jamo)])
   }
 
+  function composeIntoComposite(...simpleJamo) {
+    const hangulImeStateMachine = {
+      '': 'cho',
+      cho: {
+        'ㄱ': ['ㄱ', 'jung'],
+        'ㄴㄹㅁㅇㅊㅋㅌㅍㅎ': ['jung'],
+        'ㄷ': ['ㄷ', 'jung'],
+        'ㅂ': ['ㅂ', 'jung'],
+        'ㅅ': ['ㅅ', 'jung'],
+        'ㅈ': ['ㅈ', 'jung'],
+      },
+      jung: {
+        'ㅏㅑㅓㅕㅡ': ['ㅣ', 'jong'],
+        'ㅗ': ['ㅏ', 'ㅣ', 'jong'],
+        'ㅛㅠㅣ': ['jong'],
+        'ㅜ': ['ㅓ', 'ㅣ', 'jong'],
+      },
+      jong: {
+        'ㄱ': ['ㄱ', 'ㅅ', 'cho'],
+        'ㄴ': ['ㅈ', 'ㅎ', 'cho'],
+        'ㄷㅁㅇㅈㅊㅋㅌㅍㅎ': ['cho'],
+        'ㄹ': ['ㄱ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅌ', 'ㅍ', 'ㅎ', 'cho'],
+        'ㅂ': ['ㅅ', 'cho'],
+        'ㅅ': ['ㅅ', 'cho'],
+      }
+    }
+    // 'ㅂㅂㅜㅓㅣㄹㄱ' -> [['ㅂㅂ'], ['ㅜ','ㅓ','ㅣ'], ['ㄹ', 'ㄱ']]
+    let currentState = ''
+    const grouped = []
+    const group = []
+    while (simpleJamo.length) {
+      const jamo = simpleJamo.shift() // 'ㅂ'
+      group.push(jamo)
+      const transitionOptionsOrInitialState = hangulImeStateMachine[currentState]
+      if (typeof transitionOptionsOrInitialState === 'string') {
+        currentState = transitionOptionsOrInitialState
+      }
+      const transitionOptions = hangulImeStateMachine[currentState] // cho: { ... }
+      const transition = Object.entries(transitionOptions).find(([jamoOptions, targetStates]) => jamoOptions.includes(jamo))
+      if (!transition) {
+        throw new Error('invalid jamo sequence')
+      }
+      const [_, targetStates] = transition // ['ㅂ', 'jung']
+      if (targetStates.length === 1) {
+        currentState = targetStates
+        grouped.push([...group])
+        group.length = 0
+      } else {
+        const match = targetStates.slice(0, -1).find(targetState => simpleJamo.startsWith(targetState))
+
+      }
+    }
+
+    return grouped
+  }
+  window.composeIntoComposite = composeIntoComposite
+
   const randomJamo = () => {
     return simpleJamoList[randomInt(0, simpleJamoList.length - 1)]
   }
