@@ -194,7 +194,9 @@ function init() {
     elem.classList.add('notransition')
     fn()
     requestAnimationFrame(() => {
-      elem.classList.remove('notransition')
+      requestAnimationFrame(() => { // 1 frame skip does not work in some cases
+        elem.classList.remove('notransition')
+      })
     })
   }
 
@@ -293,7 +295,7 @@ function init() {
       jamoElement.textContent = jamo
     }
     if (DEBUG) {
-      createCompletionBarElement(startX, startY, endX, endY)
+      appendCompletionBarElement(startX, startY, endX, endY)
     }
 
     return true
@@ -331,6 +333,12 @@ function init() {
     const rand = Math.floor(randomFromCoords(startX, startY) * colorSteps) * Math.floor(360 / colorSteps)
     const color = `oklch(75% 75% ${randomHueBase + rand}deg)`
     completionBarElement.style.setProperty('--color', color)
+
+    return completionBarElement
+  }
+
+  function appendCompletionBarElement(startX, startY, endX, endY) {
+    const completionBarElement = createCompletionBarElement(startX, startY, endX, endY)
     jamoBoardElement.appendChild(completionBarElement)
   }
 
@@ -343,7 +351,7 @@ function init() {
     return simpleJamoBreakdown(b).length - simpleJamoBreakdown(a).length
   })
 
-  const colorSteps = 8
+  const colorSteps = 16
   const randomHueBase = randomInt(0, 359)
 
   function randomFromCoords(x, y) {
@@ -424,13 +432,12 @@ function init() {
     set: (target, prop, value) => {
       if (prop === 'value' && typeof value === 'boolean') {
         if (value) {
-          jamoBoardElement.classList.add('pointerdown')
-
           if (DEBUG) {
+            console.log('pointerdown')
             Array.from(jamoBoardElement.querySelectorAll('.start, .mid, .end')).forEach(elem => elem.classList.remove('start', 'mid', 'end'))
           }
         } else {
-          jamoBoardElement.classList.remove('pointerdown')
+          console.log('pointerup')
         }
         return Reflect.set(target, prop, value)
       }
@@ -526,6 +533,24 @@ function init() {
     }
   }
 
+  let currentJamoComletion = null
+
+  function updateJamoCompletion() {
+    if (dragStartPos[0] !== -1 && dragStartPos[1] !== -1) {
+      if (currentJamoComletion) {
+        currentJamoComletion.remove()
+      }
+      const [sx, sy] = dragStartPos
+      const [ex, ey] = dragEndPos[0] === -1 && dragEndPos[1] === -1 ? [sx, sy] : dragEndPos
+      currentJamoComletion = createCompletionBarElement(sx, sy, ex, ey)
+      jamoBoardElement.appendChild(currentJamoComletion)
+    }
+  }
+
+  function checkJamoCompletion() {
+    throw 'TODO'
+  }
+
   jamoBoardElement.addEventListener('pointerdown', (e) => {
     pointerdown.value = true
     const jamoElement = document.elementFromPoint(e.clientX, e.clientY)
@@ -536,17 +561,18 @@ function init() {
       dragStartPos = indexToPos(jamoElement.dataset.index * 1)
       dragEndPos = [-1, -1]
       dragDir = -1
+      updateJamoCompletion()
     }
   })
 
   document.addEventListener('pointerup', (e) => {
     pointerdown.value = false
     if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1 && (dragStartPos[0] !== dragEndPos[0] || dragStartPos[1] !== dragEndPos[1])) {
-      
+      checkJamoCompletion()
     }
   })
 
-  jamoBoardElement.addEventListener('pointermove', (e) => {
+  document.addEventListener('pointermove', (e) => {
     if (pointerdown.value) {
       const jamoElement = document.elementFromPoint(e.clientX, e.clientY)
       if (jamoElement.matches('#jamo-board>i')) {
@@ -572,6 +598,7 @@ function init() {
             jamoBoardElement.querySelector('.end')?.classList.remove('end')
             closestElement.classList.add('end')
           }
+          updateJamoCompletion()
         }
       }
     }
@@ -590,6 +617,7 @@ function init() {
 
 function reset() {
   intervals.forEach(clearInterval)
+  intervals.length = 0
   const children = [...document.body.children].filter(elem => elem !== document.currentScript)
   children.forEach(child => child.remove())
   document.body.innerHTML = initialHTMLWithoutThisScript
