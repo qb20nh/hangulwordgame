@@ -52,9 +52,45 @@ body {
   user-select: none;
   cursor: pointer;
   font-style: normal;
+  position: relative;
 }
 
-#jamo-board.pointerdown>i {
+:root[data-mode="dark"] #jamo-board>i::before {
+  background-color: #fff;
+}
+:root[data-mode="light"] #jamo-board>i::before {
+  background-color: #000;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-mode="system"] #jamo-board>i::before {
+    background-color: #fff;
+  }
+}
+@media (prefers-color-scheme: light) {
+  :root[data-mode="system"] #jamo-board>i::before {
+    background-color: #000;
+  }
+}
+
+#jamo-board>i::before {
+  content: '';
+  display: inline-block;
+  width: calc(var(--size) * 1.414);
+  height: calc(var(--size) * 1.414);
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+}
+#jamo-board:not(:active)>i:hover::before {
+  opacity: 0.15;
+}
+
+#jamo-board:active>i {
   padding: calc(var(--gap)/4);
   margin: calc(var(--gap)/-4);
 }
@@ -81,7 +117,7 @@ body {
   position: absolute;
   background-color: var(--color); /* Line color */
   height:var(--thick); /* Line thickness */
-  
+
   /* Calculate the bottom-left point of the line */
   top: 50%;
   left: 50%;
@@ -94,10 +130,10 @@ body {
 
   /* Ensure the rotation point is the start of the line */
   transform-origin: center;
-  /* opacity: 0.5; */
-  mix-blend-mode: exclusion;
+  mix-blend-mode: overlay;
+  opacity: 0.5;
 
-  z-index: -1;
+  z-index: -2;
 
   border-radius: var(--thick);
 
@@ -110,13 +146,15 @@ body {
   right: 1rem;
   width: 2rem;
   height: 2rem;
-  border-radius: 50%;
-  font-size: 1.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
   transform: rotate(45deg);
+  border-radius: 50%;
+  overflow: hidden;
+  padding: 0;
+  view-transition-name: none;
 }
 
 .notransition, .notransition>* {
@@ -125,23 +163,42 @@ body {
 
 #dark-mode-toggle>#sun, #dark-mode-toggle>#moon {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-align: center;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   transition: clip-path 0.5s;
 }
 
+#dark-mode-toggle>#sun {
+  color-scheme: light;
+  background-color: buttonface;
+}
+
+#dark-mode-toggle>#moon {
+  color-scheme: dark;
+  background-color: buttonface;
+}
+
+#dark-mode-toggle>#sun::before,
+#dark-mode-toggle>#moon::before {
+  display: inline-block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
 #dark-mode-toggle>#sun::before {
   content: '☀️';
-  display: inline-block;
-  transform: rotate(-45deg);
 }
 
 #dark-mode-toggle>#moon::before {
   content: '🌙';
-  display: inline-block;
-  transform: rotate(-45deg);
 }
 
 :root[data-mode="system"] {
