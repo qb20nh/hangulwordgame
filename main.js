@@ -536,16 +536,6 @@ function init() {
   let dragDir = -1
   let dragEndPos = [-1, -1]
 
-  function updateDebugInfo() {
-    document.getElementById('dragStartPos').textContent = dragStartPos.join(', ')
-    document.getElementById('dragEndPos').textContent = dragEndPos.join(', ')
-    document.getElementById('dragDir').textContent = dragDir
-  }
-
-  if (DEBUG) {
-    setIntervalWithReset(updateDebugInfo, 100)
-  }
-
   function indexToPos(index) {
     return [index % width, Math.floor(index / width)]
   }
@@ -793,3 +783,7 @@ function registerKonamiCodeHandler() {
 function konamiCodeHandler() {
   console.log('Konami code activated')
 }
+
+window.addEventListener('load', () => {
+  console.log(`page loaded: ${performance.now() - begin}ms`)
+})
