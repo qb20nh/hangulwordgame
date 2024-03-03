@@ -1,0 +1,16 @@
+{
+	"devDependencies": {
+		"@swc/cli": "^0.3.10",
+		"@swc/core": "^1.4.2",
+		"csso-cli": "^4.0.2",
+		"html-minifier-terser": "^7.2.0",
+		"npm-run-all": "^4.1.5"
+	},
+	"scripts": {
+		"preinstall": "npx only-allow pnpm",
+		"minify:html": "npx html-minifier-terser --collapse-boolean-attributes --collapse-whitespace --decode-entities --remove-attribute-quotes --remove-comments --remove-optional-tags --remove-redundant-attributes --output index.html src.html",
+		"minify:css": "npx csso style.css --output css.css",
+		"minify:js": "npx swc ./main.js --config-file .swcrc -o js.js",
+		"minify": "run-p minify:*"
+	}
+}

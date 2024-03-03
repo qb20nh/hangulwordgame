@@ -1,3 +1,4 @@
+const documentParsed = performance.now()
 let preventInitCall = false
 const DEBUG = true
 const intervals = []
@@ -91,6 +92,8 @@ function init() {
     throw new Error('This function should not be called more than once.')
   }
 
+  preventInitCall = true
+
 
   const [nfdChoBase, nfdJungBase, nfdJongBase] = [...'각'.normalize('NFD')]
   const simpleJungBase = 'ㅏ'
@@ -176,9 +179,9 @@ function init() {
     return [simpleCho, simpleJung, simpleJong].flatMap(jamo => [...(compositeToSimpleJamoMap[jamo] ?? jamo)])
   }
 
-  function composeIntoComposite(...simpleJamo) {
+  function composeIntoComposite(simpleJamo) {
+    simpleJamo = [...simpleJamo]
     const hangulImeStateMachine = {
-      '': 'cho',
       cho: {
         'ㄱ': ['ㄱ', 'jung'],
         'ㄴㄹㅁㅇㅊㅋㅌㅍㅎ': ['jung'],
@@ -202,30 +205,43 @@ function init() {
         'ㅅ': ['ㅅ', 'cho'],
       }
     }
+    const maxLengths = {
+      cho: 2,
+      jung: 3,
+      jong: 2
+    }
+    let currentLengths = {
+      cho: 0,
+      jung: 0,
+      jong: 0
+    }
     // 'ㅂㅂㅜㅓㅣㄹㄱ' -> [['ㅂㅂ'], ['ㅜ','ㅓ','ㅣ'], ['ㄹ', 'ㄱ']]
-    let currentState = ''
+    let currentState = 'cho'
     const grouped = []
     const group = []
-    while (simpleJamo.length) {
+    let nextCandidate = null
+    while (simpleJamo[0]) {
       const jamo = simpleJamo.shift() // 'ㅂ'
       group.push(jamo)
-      const transitionOptionsOrInitialState = hangulImeStateMachine[currentState]
-      if (typeof transitionOptionsOrInitialState === 'string') {
-        currentState = transitionOptionsOrInitialState
-      }
+      currentLengths[currentState]++
       const transitionOptions = hangulImeStateMachine[currentState] // cho: { ... }
-      const transition = Object.entries(transitionOptions).find(([jamoOptions, targetStates]) => jamoOptions.includes(jamo))
+      const transition = Object.entries(transitionOptions).find(([jamoOptions, _]) => jamoOptions.includes(jamo))
+      if (DEBUG) debugger
       if (!transition) {
-        throw new Error('invalid jamo sequence')
+        throw new Error('cannot find suitable continuation for jamo sequence')
       }
       const [_, targetStates] = transition // ['ㅂ', 'jung']
-      if (targetStates.length === 1) {
-        currentState = targetStates
+      if (targetStates.length === 1 || currentLengths[currentState] === maxLengths[currentState]) {
+        currentLengths[currentState] = 0
+        currentState = targetStates[0]
         grouped.push([...group])
         group.length = 0
+        if (nextCandidate && !nextCandidate.includes(jamo)) {
+          throw new Error('next candidate mismatch')
+        }
+        nextCandidate = null
       } else {
-        const match = targetStates.slice(0, -1).find(targetState => simpleJamo.startsWith(targetState))
-
+        nextCandidate = targetStates.slice(0, -1)
       }
     }
 
@@ -361,9 +377,19 @@ function init() {
   const cellSize = 2
   jamoBoardElement.style.setProperty('--size', `${cellSize}rem`)
 
-  function createCompletionBarElement(startX, startY, endX, endY) {
-    const completionBarTemplate = document.getElementById('completion-bar-template')
-    const completionBarElement = completionBarTemplate.content.cloneNode(true).querySelector('.completion-bar')
+  function memo(key, compute) {
+    const cache = memo.cache ?? (memo.cache = new Map())
+    if (cache.has(key)) {
+      return cache.get(key)
+    }
+    const result = compute()
+    cache.set(key, result)
+    return result
+  }
+
+  function createCompletionBarElement(startX, startY, endX, endY, updateElement = null) {
+    const completionBarTemplate = memo(createCompletionBarElement, () => document.getElementById('completion-bar-template'))
+    const completionBarElement = updateElement ?? completionBarTemplate.content.cloneNode(true).querySelector('.completion-bar')
     const padding = 0.25
 
     const sdx = Math.sign(endX - startX)
@@ -433,34 +459,39 @@ function init() {
     }
   }
 
-  wordList.forEach((word) => {
-    let x
-    let y
-    let direction
-    let repeated = 0
-    while (true) {
-      x = randomInt(0, width - 1)
-      y = randomInt(0, height - 1)
-      direction = getDirection()
-      const directionCorrected = easyDirection ? ((direction + 6) % 8) : direction
-      const success = writeWord(word, x, y, directionCorrected)
-      if (success) {
-        directionsProbabilityDist[direction]--
-        sum--
-        if (wordCount - directionsProbabilityDist[direction] > wordCount / 3) {
-          sum -= directionsProbabilityDist[direction]
-          directionsProbabilityDist[direction] = 0
+  try {
+
+    wordList.forEach((word) => {
+      let x
+      let y
+      let direction
+      let repeated = 0
+      while (true) {
+        x = randomInt(0, width - 1)
+        y = randomInt(0, height - 1)
+        direction = getDirection()
+        const directionCorrected = easyDirection ? ((direction + 6) % 8) : direction
+        const success = writeWord(word, x, y, directionCorrected)
+        if (success) {
+          directionsProbabilityDist[direction]--
+          sum--
+          if (wordCount - directionsProbabilityDist[direction] > wordCount / 3) {
+            sum -= directionsProbabilityDist[direction]
+            directionsProbabilityDist[direction] = 0
+          }
+          break
         }
-        break
+        if (repeated > wordCount ** 2) {
+          throw 'The board generation was stuck in impossible state, so the page was reloaded.'
+        }
+        repeated++
       }
-      if (repeated > wordCount ** 2) {
-        localStorage.error = 'The board generation was stuck in impossible state, so the page was reloaded.'
-        reset()
-        return
-      }
-      repeated++
-    }
-  })
+    })
+  } catch (e) {
+    console.error(e)
+    reset()
+    return
+  }
 
   // add event listener for dark mode toggle
   const darkModeToggleButton = document.getElementById('dark-mode-toggle')
@@ -594,13 +625,13 @@ function init() {
 
   function updateJamoCompletion() {
     if (dragStartPos[0] !== -1 && dragStartPos[1] !== -1) {
-      if (currentJamoComletion) {
-        currentJamoComletion.remove()
-      }
+      const exists = currentJamoComletion !== null
       const [sx, sy] = dragStartPos
       const [ex, ey] = dragEndPos[0] === -1 && dragEndPos[1] === -1 ? [sx, sy] : dragEndPos
-      currentJamoComletion = createCompletionBarElement(sx, sy, ex, ey)
-      jamoBoardElement.appendChild(currentJamoComletion)
+      currentJamoComletion = createCompletionBarElement(sx, sy, ex, ey, currentJamoComletion)
+      if (!exists) {
+        jamoBoardElement.appendChild(currentJamoComletion)
+      }
     }
   }
 
@@ -632,7 +663,7 @@ function init() {
   document.addEventListener('pointermove', (e) => {
     if (pointerdown.value) {
       const jamoElement = document.elementFromPoint(e.clientX, e.clientY)
-      if (jamoElement.matches('#jamo-board>i')) {
+      if (jamoElement?.matches('#jamo-board>i')) {
         const pos = indexToPos(jamoElement.dataset.index * 1)
         if (dragStartPos[0] === pos[0] && dragStartPos[1] === pos[1]) {
           return
@@ -670,6 +701,27 @@ function init() {
   }
 
   window.serializeGameState = serializeGameState
+
+  const gameInitialized = performance.now()
+
+  requestIdleCallback(() => {
+    const settled = performance.now()
+
+    const t1 = documentParsed - begin
+    const t2 = jsParsed - documentParsed
+    const t3 = gameInitialized - jsParsed
+    const t4 = settled - gameInitialized
+    const t5 = settled - begin
+    console.log('Document parsed in', `${t1} ms`)
+    console.log('JS parsed in', `${t2} ms`)
+    console.log('Game initialized in', `${t3} ms`)
+    console.log('Fully interactive(idle) in', `${t4} ms`)
+    console.log('Total time from beginning', `${t5} ms`)
+    
+    const perfHistory = load('perfHistory', [])
+    perfHistory.push([t1, t2, t3, t4, t5])
+    save('perfHistory', perfHistory)
+  })
 }
 
 function reset() {
@@ -680,8 +732,64 @@ function reset() {
   document.body.innerHTML = initialHTMLWithoutThisScript
   preventInitCall = false
   init()
-  preventInitCall = true
 }
 
+function load(key, fallback) {
+  const data = localStorage[key]
+  if (typeof data === 'string') {
+    return JSON.parse(data)
+  }
+  return fallback ?? null
+}
+
+function clear(key) {
+  delete localStorage[key]
+}
+
+function save(key, value) {
+  localStorage[key] = JSON.stringify(value)
+}
+
+function average(arr) {
+  return arr.reduce((acc, val) => acc + val, 0) / arr.length
+}
+function median(arr) {
+  const sorted = arr.slice().sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2
+  }
+  return sorted[mid]
+}
+
+function getCurrentFunctionName() {
+  const currentStackRaw = new Error().stack
+  const callerLine = currentStackRaw.split('\n').slice(1)[1]
+  const caller = callerLine.match(/at (\w+)/)[1]
+  return caller
+}
+
+const jsParsed = performance.now()
+
 init()
-preventInitCall = true
+
+function registerKonamiCodeHandler() {
+  const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'Enter']
+  let konamiCodeIndex = 0
+  window.addEventListener('keydown', async (e) => {
+    if (e.key === konamiCode[konamiCodeIndex]) {
+      console.log('Konami code key matched', e.key)
+      konamiCodeIndex++
+      if (konamiCodeIndex === konamiCode.length) {
+        konamiCodeIndex = 0
+        konamiCodeHandler()
+      }
+    } else {
+      konamiCodeIndex = 0
+    }
+  }, {passive: true})
+}
+
+function konamiCodeHandler() {
+  console.log('Konami code activated')
+}
