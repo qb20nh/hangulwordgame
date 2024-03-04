@@ -94,6 +94,13 @@ function init() {
 
   preventInitCall = true
 
+  
+  const dirMap = [
+    [3, 2, 1],
+    [4, -1, 0],
+    [5, 6, 7]
+  ]
+
 
   const [nfdChoBase, nfdJungBase, nfdJongBase] = [...'각'.normalize('NFD')]
   const simpleJungBase = 'ㅏ'
@@ -289,7 +296,9 @@ function init() {
 
     return grouped
   }
-  window.composeIntoComposite = composeIntoComposite
+  if (DEBUG) {
+    window.composeIntoComposite = composeIntoComposite
+  }
 
   const randomJamo = () => {
     return simpleJamoList[randomInt(0, simpleJamoList.length - 1)]
@@ -335,25 +344,18 @@ function init() {
 
 
   const getPosition = (x, y, direction, progress) => {
-    switch (direction) {
-      case 0:
-        return [x + progress, y]
-      case 1:
-        return [x + progress, y - progress]
-      case 2:
-        return [x, y - progress]
-      case 3:
-        return [x - progress, y - progress]
-      case 4:
-        return [x - progress, y]
-      case 5:
-        return [x - progress, y + progress]
-      case 6:
-        return [x, y + progress]
-      case 7:
-        return [x + progress, y + progress]
-      default:
-        throw new RangeError('invalid direction')
+    if (direction < 0 || direction > 7) {
+      throw new RangeError('direction must be 0 to 7')
+    }
+    if (progress < 0) {
+      throw new RangeError('progress must be 0 or greater')
+    }
+    for (let dx = -1; i <= 1; i++) {
+      for (let dy = -1; j <= 1; j++) {
+        if (dirMap[dx + 1][dy + 1] === direction) {
+          return [x + dx * progress, y + dy * progress]
+        }
+      }
     }
   }
 
@@ -584,11 +586,6 @@ function init() {
       return -1
     }
     const [dx, dy] = [tx - ox, ty - oy]
-    const dirMap = [
-      [3, 2, 1],
-      [4, -1, 0],
-      [5, 6, 7]
-    ]
     return dirMap[Math.sign(dy) + 1][Math.sign(dx) + 1]
   }
 
@@ -680,9 +677,10 @@ function init() {
         return
       }
       const createRange = (start, end) => {
-        const result = []
-        for (let i = start; i <= end; i++) {
-          result.push(i)
+        const inc = start < end ? 1 : -1;
+        const result = [];
+        for (let i = 0; i <= Math.abs(end - start); i += 1) {
+          result.push(i * inc + start)
         }
         return result
       }
@@ -692,13 +690,21 @@ function init() {
       const coords = Array.from({ length: longer }, (_, i) => [rangeX[i] ?? startX, rangeY[i] ?? startY])
       const jamoSequence = coords.map(([x, y]) => jamoElements[y * width + x].textContent).join('')
       const foundWord = wordList.find(word => {
-        const breakdown = memo(word, () => simpleJamoBreakdown(word).join(''))
-        return breakdown === jamoSequence
+        const [simple, reversed] = memo(word, () => {
+          const simple = simpleJamoBreakdown(word)
+          return [simple.join(''), simple.toReversed().join('')]
+        })
+        return simple === jamoSequence || reversed === jamoSequence
       })
       if (foundWord) {
-        const wordElement = wordListElement.querySelector(`li:is(:not(.found))[data-word="${foundWord}"]`)
+        const wordElement = wordListElement.querySelector(`li[data-word="${foundWord}"]`)
         if (wordElement) {
-          wordElement.classList.add('found')
+          if (wordElement.classList.contains('found')) {
+            currentJamoCompletion.remove()
+          } else {
+            wordElement.style.setProperty('--color', currentJamoCompletion.style.getPropertyValue('--color'))
+            wordElement.classList.add('found')
+          }
         }
       } else {
         currentJamoCompletion.remove()
@@ -769,20 +775,29 @@ function init() {
 
   window.serializeGameState = serializeGameState
 
-  const screenWidth = screen.availWidth
-  const screenHeight = screen.availHeight
-
-  const wordListElementWidth = wordListElement.getBoundingClientRect().width
-  const jamoBoardElementWidth = jamoBoardElement.getBoundingClientRect().width
-
-  wordListElement.style.scale = Math.min(1, screenWidth / wordListElementWidth)
-  jamoBoardElement.style.scale = Math.min(1, screenWidth / jamoBoardElementWidth)
-
   const mainElement = document.querySelector('main')
-  const mainElementHeight = mainElement.getBoundingClientRect().height
 
-  mainElement.style.scale = Math.min(1, screenHeight / mainElementHeight)
+  const resizeToFit = () => {
+    console.log('resizeToFit')
+    const screenWidth = screen.availWidth
+    const screenHeight = screen.availHeight
 
+    wordListElement.style.zoom = 1
+    jamoBoardElement.style.zoom = 1
+    mainElement.style.zoom = 1
+
+    const wordListElementWidth = wordListElement.getBoundingClientRect().width
+    const jamoBoardElementWidth = jamoBoardElement.getBoundingClientRect().width
+  
+    wordListElement.style.zoom = Math.min(1, screenWidth / wordListElementWidth)
+    jamoBoardElement.style.zoom = Math.min(1, screenWidth / jamoBoardElementWidth)
+  
+    const mainElementHeight = mainElement.getBoundingClientRect().height
+  
+    mainElement.style.zoom = Math.min(1, screenHeight / mainElementHeight)
+  }
+  resizeToFit()
+  window.addEventListener('resize', resizeToFit)
   
 
   const gameInitialized = performance.now()
@@ -802,8 +817,6 @@ function init() {
       perfHistory.push([t1, t2, t3, t4, t5])
       save('perfHistory', perfHistory)
     })
-  } else {
-    clear('perfHistory')
   }
 }
 
@@ -859,19 +872,35 @@ init()
 function registerKonamiCodeHandler() {
   const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'Enter']
   let konamiCodeIndex = 0
-  window.addEventListener('keydown', async (e) => {
+  const a = async (e) => {
     if (e.key === konamiCode[konamiCodeIndex]) {
       konamiCodeIndex++
       if (konamiCodeIndex === konamiCode.length) {
-        konamiCodeIndex = 0
-        konamiCodeHandler()
+        showCrazyShit()
+        window.removeEventListener('keydown', a)
       }
     } else {
       konamiCodeIndex = 0
     }
-  }, {passive: true})
+  }
+  window.addEventListener('keydown', a, {passive: true})
 }
 
-function konamiCodeHandler() {
-  console.log('Konami code activated')
+function showCrazyShit() {
+  const lunaticText = generateLunaticText()
+  const lunaticElement = document.createElement('div')
+  lunaticElement.textContent = lunaticText
+  document.body.appendChild(lunaticElement)
+  const slices = createRandomStyleSlices({textLength: lunaticText.length, numSlices: 100, maxLength: 5})
+  // compute overlapping slices and splice them so that they don't overlap
+  const sliceGroups = slices.reduce((acc, slice) => {
+    const last = acc[acc.length - 1]
+    if (last && last.some(s => s.start < slice.end && s.end > slice.start)) {
+      last.push(slice)
+    } else {
+      acc.push([slice])
+    }
+    return acc
+  }, [])
+
 }

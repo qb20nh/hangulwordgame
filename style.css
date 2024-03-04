@@ -29,7 +29,7 @@ body {
 
 /* if a word is marked found, highlight it */
 #word-list>.found {
-  background-color: lightgreen;
+  background-color: var(--color);
 }
 
 #jamo-board {
