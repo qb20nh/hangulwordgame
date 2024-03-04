@@ -40,6 +40,8 @@ body {
   margin: 0;
   position: relative;
   aspect-ratio: 1;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #jamo-board>i {
@@ -61,6 +63,9 @@ body {
 :root[data-mode="light"] #jamo-board>i::before {
   background-color: #000;
 }
+:root[data-mode="light"] #jamo-board>.completion-bar::before {
+  opacity: 0.6;
+}
 @media (prefers-color-scheme: dark) {
   :root[data-mode="system"] #jamo-board>i::before {
     background-color: #fff;
@@ -69,6 +74,9 @@ body {
 @media (prefers-color-scheme: light) {
   :root[data-mode="system"] #jamo-board>i::before {
     background-color: #000;
+  }
+  :root[data-mode="system"] #jamo-board>.completion-bar::before {
+    opacity: 0.6;
   }
 }
 
@@ -155,6 +163,7 @@ body {
   overflow: hidden;
   padding: 0;
   view-transition-name: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .notransition, .notransition>* {

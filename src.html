@@ -1,17 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko" data-mode="system">
-
 <head>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="preload" as="style" href="https://cdn.jsdelivr.net/gh/qb20nh/hangulwordgame@main/css.css">
-  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/gh/qb20nh/hangulwordgame@main/js.js">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="darkreader-lock">
   <title>한글 단어 찾기 게임</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/qb20nh/hangulwordgame@main/css.css">
+  <link rel="stylesheet" href="css.css">
 </head>
-
 <body>
   <script>const begin = performance.now()</script>
   <header>
@@ -21,7 +16,7 @@
   </header>
   <main>
     <template id="word-template">
-      <li></li>
+      <li data-word=""></li>
     </template>
     <ul id="word-list"></ul>
     <template id="jamo-template">
@@ -31,7 +26,6 @@
       <div class="completion-bar"></div>
     </template>
     <section id="jamo-board">
-      <div id="currentJamoCompletions"></div>
     </section>
   </main>
   <footer>
@@ -43,7 +37,6 @@
       <p id="error-message"></p>
     </form>
   </dialog>
-  <script src="https://cdn.jsdelivr.net/gh/qb20nh/hangulwordgame@main/js.js"></script>
+  <script src="js.js"></script>
 </body>
-
 </html>

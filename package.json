@@ -8,7 +8,7 @@
 	},
 	"scripts": {
 		"preinstall": "npx only-allow pnpm",
-		"minify:html": "npx html-minifier-terser --collapse-boolean-attributes --collapse-whitespace --decode-entities --remove-attribute-quotes --remove-comments --remove-optional-tags --remove-redundant-attributes --output index.html src.html",
+		"minify:html": "npx html-minifier-terser --collapse-boolean-attributes --collapse-whitespace --decode-entities --remove-attribute-quotes --remove-comments --remove-redundant-attributes --output index.html src.html",
 		"minify:css": "npx csso style.css --output css.css",
 		"minify:js": "npx swc ./main.js --config-file .swcrc -o js.js",
 		"minify": "run-p minify:*"

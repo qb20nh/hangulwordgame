@@ -1,6 +1,6 @@
 const documentParsed = performance.now()
 let preventInitCall = false
-const DEBUG = true
+const DEBUG = false
 const intervals = []
 const setIntervalWithReset = (fn, ms, ...args) => {
   const id = setInterval(fn, ms, ...args)
@@ -122,17 +122,24 @@ function init() {
     'ㅓㅣ': 'ㅔ',
     'ㅕㅣ': 'ㅖ',
     'ㅗㅏ': 'ㅘ',
-    'ㅗㅐ': 'ㅙ',
+    'ㅗㅏㅣ': 'ㅙ',
     'ㅗㅣ': 'ㅚ',
     'ㅜㅓ': 'ㅝ',
-    'ㅜㅔ': 'ㅞ',
+    'ㅜㅓㅣ': 'ㅞ',
     'ㅜㅣ': 'ㅟ',
     'ㅡㅣ': 'ㅢ'
   }
 
   const compositeToSimpleJamoMap = Object.fromEntries(Object.entries(simpleTocompositeJamoMap).map(([simple, composite]) => [composite, simple]))
 
-  
+  let previousGameState
+  try {
+    previousGameState = deserializeGameState(load('gameState'))
+  } catch (e) {
+    console.error(e)
+    clear('gameState')
+  }
+
   const cloned = [...wordListFull]
 
   const wordCount = 16
@@ -141,16 +148,20 @@ function init() {
     return [...word.normalize('NFC')].flatMap(decomposeIntoSimple)
   }
 
-  const wordList = []
-  for (let i = 0; i < wordCount; i++) {
-    wordList.push(...cloned.splice(randomInt(0, cloned.length - 1), 1))
+  const wordList = previousGameState ? previousGameState[0] : []
+  if (!previousGameState) {
+    for (let i = 0; i < wordCount; i++) {
+      wordList.push(...cloned.splice(randomInt(0, cloned.length - 1), 1))
+    }
+    cloned.length = 0
   }
 
   const wordListElement = document.getElementById('word-list')
   const wordListTemplate = document.getElementById('word-template')
   wordList.forEach(word => {
-    const li = wordListTemplate.content.cloneNode(true)
-    li.querySelector('li').textContent = word
+    const li = wordListTemplate.content.cloneNode(true).querySelector('li')
+    li.textContent = word
+    li.dataset.word = word
     wordListElement.appendChild(li)
   })
 
@@ -168,7 +179,31 @@ function init() {
   const simpleJamoList = `ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎㅏㅑㅓㅕㅗㅛㅜㅠㅡㅣ`
 
 
+  function calculateChecksum(gs) {
+    return [...gs].map(c => c.charCodeAt()).reduce((acc, val) => ((acc >>> 1) | ((acc & 1) << 15)) ^ val, 0)
+  }
 
+  function serializeGameState() {
+    const words = wordList.join()
+    const jamoBoard = Array.from({ length: width * height }, (_, i) => jamoElements[i].textContent).join('')
+    const gs = `${words}|${width}|${height}|${jamoBoard}`
+    return `${gs}|${calculateChecksum(gs)}`
+  }
+
+  function deserializeGameState(gs) {
+    if (gs === null) {
+      return null
+    }
+    const [words, width, height, jamoBoard, checksum] = gs.split('|')
+    const expectedChecksum = calculateChecksum(`${words}|${width}|${height}|${jamoBoard}`)
+    if (expectedChecksum !== checksum * 1) {
+      throw new Error('saved game state is corrupted')
+    }
+    if (jamoBoard.length !== width * height) {
+      throw new Error('saved game state is corrupted')
+    }
+    return [words.split(','), width * 1, height * 1, jamoBoard]
+  }
 
 
   function decomposeIntoSimple(char) {
@@ -179,7 +214,7 @@ function init() {
     return [simpleCho, simpleJung, simpleJong].flatMap(jamo => [...(compositeToSimpleJamoMap[jamo] ?? jamo)])
   }
 
-  function composeIntoComposite(simpleJamo) {
+  function composeIntoComposite(simpleJamo) { // @TODO: complete this function
     simpleJamo = [...simpleJamo]
     const hangulImeStateMachine = {
       cho: {
@@ -253,11 +288,8 @@ function init() {
     return simpleJamoList[randomInt(0, simpleJamoList.length - 1)]
   }
 
-  let simpleJamoFromWordList = null
+  const simpleJamoFromWordList = wordList.flatMap(word => [...word.normalize('NFC')].flatMap(decomposeIntoSimple))
   const jamoFromWordlist = () => {
-    if (simpleJamoFromWordList === null) {
-      simpleJamoFromWordList = wordList.flatMap(word => [...word.normalize('NFC')].flatMap(decomposeIntoSimple))
-    }
     return simpleJamoFromWordList[randomInt(0, simpleJamoFromWordList.length - 1)]
   }
 
@@ -282,7 +314,7 @@ function init() {
     noTransitionZone(() => {
       for (let i = 0; i < width * height; i++) {
         const jamoElement = jamoBoardTemplate.content.cloneNode(true).querySelector('i')
-        const jamo = randomInt(0, 1) ? randomJamo() : jamoFromWordlist()
+        const jamo = previousGameState ? previousGameState[3][i] : (randomInt(0, 1) ? randomJamo() : jamoFromWordlist())
         jamoElement.textContent = jamo
         jamoBoardElement.appendChild(jamoElement)
       }
@@ -392,6 +424,9 @@ function init() {
     const completionBarElement = updateElement ?? completionBarTemplate.content.cloneNode(true).querySelector('.completion-bar')
     const padding = 0.25
 
+    completionBarElement.dataset.start = `${startX},${startY}`
+    completionBarElement.dataset.end = `${endX},${endY}`
+
     const sdx = Math.sign(endX - startX)
     const sdy = Math.sign(endY - startY)
     const xmin = Math.min(startX, endX);
@@ -429,11 +464,6 @@ function init() {
     return Math.floor(Math.random() * (max - min + 1)) + min
   }
 
-  // determine random position and direction for every word list
-  wordList.sort((a, b) => {
-    return simpleJamoBreakdown(b).length - simpleJamoBreakdown(a).length
-  })
-
   const colorSteps = 16
   const randomHueBase = randomInt(0, 359)
 
@@ -459,38 +489,41 @@ function init() {
     }
   }
 
-  try {
-
-    wordList.forEach((word) => {
-      let x
-      let y
-      let direction
-      let repeated = 0
-      while (true) {
-        x = randomInt(0, width - 1)
-        y = randomInt(0, height - 1)
-        direction = getDirection()
-        const directionCorrected = easyDirection ? ((direction + 6) % 8) : direction
-        const success = writeWord(word, x, y, directionCorrected)
-        if (success) {
-          directionsProbabilityDist[direction]--
-          sum--
-          if (wordCount - directionsProbabilityDist[direction] > wordCount / 3) {
-            sum -= directionsProbabilityDist[direction]
-            directionsProbabilityDist[direction] = 0
+  if (!previousGameState) {
+    try {
+      wordList.toSorted((a, b) => {
+        return simpleJamoBreakdown(b).length - simpleJamoBreakdown(a).length
+      }).forEach((word) => {
+        let x
+        let y
+        let direction
+        let repeated = 0
+        while (true) {
+          x = randomInt(0, width - 1)
+          y = randomInt(0, height - 1)
+          direction = getDirection()
+          const directionCorrected = easyDirection ? ((direction + 6) % 8) : direction
+          const success = writeWord(word, x, y, directionCorrected)
+          if (success) {
+            directionsProbabilityDist[direction]--
+            sum--
+            if (wordCount - directionsProbabilityDist[direction] > wordCount / 3) {
+              sum -= directionsProbabilityDist[direction]
+              directionsProbabilityDist[direction] = 0
+            }
+            break
           }
-          break
+          if (repeated > wordCount ** 2) {
+            throw 'The board generation was stuck in impossible state, so the page was reloaded.'
+          }
+          repeated++
         }
-        if (repeated > wordCount ** 2) {
-          throw 'The board generation was stuck in impossible state, so the page was reloaded.'
-        }
-        repeated++
-      }
-    })
-  } catch (e) {
-    console.error(e)
-    reset()
-    return
+      })
+    } catch (e) {
+      console.error(e)
+      reset()
+      return
+    }
   }
 
   // add event listener for dark mode toggle
@@ -625,14 +658,59 @@ function init() {
     }
   }
 
-  function checkJamoCompletion() {
-    throw 'TODO'
+  function checkJamoCompletion(currentJamoCompletion) {
+    try {
+      if (currentJamoCompletion === null) {
+        return
+      }
+      // get jamo sequence from current jamo completion
+      const [startX, startY] = currentJamoCompletion.dataset.start.split(',').map(Number)
+      const [endX, endY] = currentJamoCompletion.dataset.end.split(',').map(Number)
+      if (startX === endX && startY === endY) {
+        // didn't move
+        currentJamoCompletion.remove()
+        return
+      }
+      // determine direction
+      const dir = isOctilinear([startX, startY], [endX, endY])
+      if (dir === -1) {
+        currentJamoCompletion.remove()
+        return
+      }
+      const createRange = (start, end) => {
+        const result = []
+        for (let i = start; i <= end; i++) {
+          result.push(i)
+        }
+        return result
+      }
+      const rangeX = createRange(startX, endX)
+      const rangeY = createRange(startY, endY)
+      const longer = Math.max(rangeX.length, rangeY.length)
+      const coords = Array.from({ length: longer }, (_, i) => [rangeX[i] ?? startX, rangeY[i] ?? startY])
+      const jamoSequence = coords.map(([x, y]) => jamoElements[y * width + x].textContent).join('')
+      const foundWord = wordList.find(word => {
+        const breakdown = memo(word, () => simpleJamoBreakdown(word).join(''))
+        return breakdown === jamoSequence
+      })
+      if (foundWord) {
+        console.log('found word', foundWord)
+        const wordElement = wordListElement.querySelector(`li:is(:not(.found))[data-word="${foundWord}"]`)
+        if (wordElement) {
+          wordElement.classList.add('found')
+        }
+      } else {
+        currentJamoCompletion.remove()
+      }
+    } finally {
+      currentJamoComletion = null
+    }
   }
 
   jamoBoardElement.addEventListener('pointerdown', (e) => {
-    pointerdown.value = true
     const jamoElement = document.elementFromPoint(e.clientX, e.clientY)
     if (jamoElement.matches('#jamo-board>i')) {
+      pointerdown.value = true
       if (DEBUG) {
         jamoElement.classList.add('start')
       }
@@ -646,12 +724,13 @@ function init() {
   document.addEventListener('pointerup', (e) => {
     pointerdown.value = false
     if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1 && (dragStartPos[0] !== dragEndPos[0] || dragStartPos[1] !== dragEndPos[1])) {
-      checkJamoCompletion()
+      checkJamoCompletion(currentJamoComletion)
     }
   })
 
   document.addEventListener('pointermove', (e) => {
     if (pointerdown.value) {
+      e.preventDefault()
       const jamoElement = document.elementFromPoint(e.clientX, e.clientY)
       if (jamoElement?.matches('#jamo-board>i')) {
         const pos = indexToPos(jamoElement.dataset.index * 1)
@@ -682,36 +761,37 @@ function init() {
     }
   })
 
-  const serializeGameState = () => {
-    const words = [...document.querySelectorAll('#word-list>li')].map(li => li.textContent).join(',')
-    const jamoBoard = Array.from({ length: width * height }, (_, i) => jamoElements[i].textContent).join('')
-    const gs = `${words}|${width}|${height}|${jamoBoard}`
-    const checksum = [...gs].map(c => c.charCodeAt()).reduce((acc, val) => ((acc >>> 1) | ((acc & 1) << 15)) ^ val, 0)
-    return `${gs}|${checksum}`
+  if (!previousGameState) {
+    save('gameState', serializeGameState())
   }
 
   window.serializeGameState = serializeGameState
 
   const gameInitialized = performance.now()
 
-  requestIdleCallback(() => {
-    const settled = performance.now()
+  const PROFILE = false
+  if (PROFILE) {
+    requestIdleCallback(() => {
+      const settled = performance.now()
 
-    const t1 = documentParsed - begin
-    const t2 = jsParsed - documentParsed
-    const t3 = gameInitialized - jsParsed
-    const t4 = settled - gameInitialized
-    const t5 = settled - begin
-    console.log('Document parsed in', `${t1} ms`)
-    console.log('JS parsed in', `${t2} ms`)
-    console.log('Game initialized in', `${t3} ms`)
-    console.log('Fully interactive(idle) in', `${t4} ms`)
-    console.log('Total time from beginning', `${t5} ms`)
-    
-    const perfHistory = load('perfHistory', [])
-    perfHistory.push([t1, t2, t3, t4, t5])
-    save('perfHistory', perfHistory)
-  })
+      const t1 = documentParsed - begin
+      const t2 = jsParsed - documentParsed
+      const t3 = gameInitialized - jsParsed
+      const t4 = settled - gameInitialized
+      const t5 = settled - begin
+      console.log('Document parsed in', `${t1} ms`)
+      console.log('JS parsed in', `${t2} ms`)
+      console.log('Game initialized in', `${t3} ms`)
+      console.log('Fully interactive(idle) in', `${t4} ms`)
+      console.log('Total time from beginning', `${t5} ms`)
+      
+      const perfHistory = load('perfHistory', [])
+      perfHistory.push([t1, t2, t3, t4, t5])
+      save('perfHistory', perfHistory)
+    })
+  } else {
+    clear('perfHistory')
+  }
 }
 
 function reset() {
