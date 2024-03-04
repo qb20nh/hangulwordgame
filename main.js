@@ -171,6 +171,13 @@ function init() {
   jamoBoardElement.addEventListener('selectstart', (e) => {
     e.preventDefault()
   })
+  let isRightClick = false
+  jamoBoardElement.addEventListener('contextmenu', (e) => {
+    if (!isRightClick) {
+      e.preventDefault()
+    }
+    isRightClick = false
+  })
 
 
   const width = 12
@@ -552,13 +559,8 @@ function init() {
   const pointerdown = new Proxy({ value: false }, {
     set: (target, prop, value) => {
       if (prop === 'value' && typeof value === 'boolean') {
-        if (value) {
-          if (DEBUG) {
-            console.log('pointerdown')
-            Array.from(jamoBoardElement.querySelectorAll('.start, .mid, .end')).forEach(elem => elem.classList.remove('start', 'mid', 'end'))
-          }
-        } else {
-          console.log('pointerup')
+        if (DEBUG) {
+          Array.from(jamoBoardElement.querySelectorAll('.start, .mid, .end')).forEach(elem => elem.classList.remove('start', 'mid', 'end'))
         }
         return Reflect.set(target, prop, value)
       }
@@ -694,7 +696,6 @@ function init() {
         return breakdown === jamoSequence
       })
       if (foundWord) {
-        console.log('found word', foundWord)
         const wordElement = wordListElement.querySelector(`li:is(:not(.found))[data-word="${foundWord}"]`)
         if (wordElement) {
           wordElement.classList.add('found')
@@ -722,6 +723,7 @@ function init() {
   })
 
   document.addEventListener('pointerup', (e) => {
+    isRightClick = e.button === 2
     pointerdown.value = false
     if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1 && (dragStartPos[0] !== dragEndPos[0] || dragStartPos[1] !== dragEndPos[1])) {
       checkJamoCompletion(currentJamoComletion)
@@ -767,6 +769,22 @@ function init() {
 
   window.serializeGameState = serializeGameState
 
+  const screenWidth = screen.availWidth
+  const screenHeight = screen.availHeight
+
+  const wordListElementWidth = wordListElement.getBoundingClientRect().width
+  const jamoBoardElementWidth = jamoBoardElement.getBoundingClientRect().width
+
+  wordListElement.style.scale = Math.min(1, screenWidth / wordListElementWidth)
+  jamoBoardElement.style.scale = Math.min(1, screenWidth / jamoBoardElementWidth)
+
+  const mainElement = document.querySelector('main')
+  const mainElementHeight = mainElement.getBoundingClientRect().height
+
+  mainElement.style.scale = Math.min(1, screenHeight / mainElementHeight)
+
+  
+
   const gameInitialized = performance.now()
 
   const PROFILE = false
@@ -779,11 +797,6 @@ function init() {
       const t3 = gameInitialized - jsParsed
       const t4 = settled - gameInitialized
       const t5 = settled - begin
-      console.log('Document parsed in', `${t1} ms`)
-      console.log('JS parsed in', `${t2} ms`)
-      console.log('Game initialized in', `${t3} ms`)
-      console.log('Fully interactive(idle) in', `${t4} ms`)
-      console.log('Total time from beginning', `${t5} ms`)
       
       const perfHistory = load('perfHistory', [])
       perfHistory.push([t1, t2, t3, t4, t5])
@@ -848,7 +861,6 @@ function registerKonamiCodeHandler() {
   let konamiCodeIndex = 0
   window.addEventListener('keydown', async (e) => {
     if (e.key === konamiCode[konamiCodeIndex]) {
-      console.log('Konami code key matched', e.key)
       konamiCodeIndex++
       if (konamiCodeIndex === konamiCode.length) {
         konamiCodeIndex = 0
@@ -863,7 +875,3 @@ function registerKonamiCodeHandler() {
 function konamiCodeHandler() {
   console.log('Konami code activated')
 }
-
-window.addEventListener('load', () => {
-  console.log(`page loaded: ${performance.now() - begin}ms`)
-})

@@ -148,8 +148,13 @@ body {
   /* filter: url(#displacementFilter); */
 }
 
+nav {
+  height: 2rem;
+}
+
 #dark-mode-toggle {
   position: absolute;
+  z-index: 1;
   top: 1rem;
   right: 1rem;
   width: 2rem;
@@ -259,17 +264,9 @@ body {
   }
 }
 
-.mid {
-  outline: 4px dashed lime;
-  outline-offset: -4px
+main {
+  font-size: 0
 }
-.start {
-  outline: 4px dashed red;
-  outline-offset: -4px
+main>* {
+  font-size: 1rem;
 }
-.end {
-  outline: 4px dashed blue;
-  outline-offset: -4px
-}
-
-
