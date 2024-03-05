@@ -482,9 +482,26 @@ function init() {
     return completionBarElement
   }
 
+  let foundWords = 0
+
+  const stageClearDialog = document.getElementById('stage-clear-dialog')
+  const yesButton = stageClearDialog.querySelector('#next-stage')
+  const noButton = stageClearDialog.querySelector('#cancel-next-stage')
+  yesButton.addEventListener('click', () => {
+    clear('gameState')
+    reset()
+  })
+  noButton.addEventListener('click', () => {
+    stageClearDialog.close()
+  })
+
   function markWordAsFound(wordElement, completionBarElement) {
+    foundWords++
     wordElement.style.setProperty('--color', completionBarElement.style.getPropertyValue('--color'))
     wordElement.classList.add('found')
+    if (foundWords === wordCount) {
+      stageClearDialog.showModal()
+    }
   }
 
   function markCompletionAsCompleted(startX, startY, endX, endY) {

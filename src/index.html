@@ -51,7 +51,7 @@
       </fieldset>
       <fieldset>
         <legend>게임 상태 불러오기</legend>
-        <label id="file-wrapper" for="select-game-state-file">
+        <label id="file-wrapper" for="select-game-state-file" data-text="파일 불러오기">
           <input type="file" id="select-game-state-file" accept=".hwg.txt" alt="파일 불러오기">
         </label>
         <br>
@@ -63,12 +63,19 @@
       </fieldset>
       <fieldset>
         <legend>게임 상태 지우기</legend>
+        게임 진행 중 오류가 발생한 경우, 저장된 게임 진행도를 초기화하여 새로 시작할 수 있습니다.
+        <br>
         <button type="button" id="clear-game-state" title="지우기">🗑️지우기</button>
       </fieldset>
       <button type="submit" title="닫기">❌닫기</button>
     </form>
   </dialog>
-  <dialog id="game-end"></dialog>
+  <dialog id="stage-clear-dialog" class="modal">
+    <h2>모두 찾음!</h2>
+    <p>다음 판으로 넘어가시겠습니까?</p>
+    <button type="button" id="next-stage" title="네">➡️네</button>
+    <button type="button" id="cancel-next-stage" title="아니오">↩️아니오</button>
+  </dialog>
   <script src="js.js"></script>
 </body>
 </html>

@@ -306,7 +306,7 @@ main>* {
 }
 
 #file-wrapper::after {
-  content: '파일 불러오기'; /* Text below emoji */
+  content: attr(data-text); /* Text below emoji */
   display: block;
   font-size: 14px; /* Adjust text size */
 }

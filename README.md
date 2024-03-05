@@ -6,11 +6,13 @@
 
 ## Singleplayer
 
-- [ ] Restart game after solving the stage
+- [x] Restart game after solving the stage
 - [ ] Add events for settings panel
 - [ ] Seed-based board generation
   - [ ] Numbered stages(infinitely many)
 - [ ] Speech API to speak out completed word
+- [ ] Cheat prevention (browser find feature)
+  - [ ] pointer position based tracking instead of using element hover state
 - [ ] Time the stage completion
 - [ ] Share API to share the result time
 
