@@ -1,4 +1,8 @@
-# TODO
+<img src="images/icon.svg" width="192" height="192">
+
+# 한글 단어 찾기 게임
+
+[https://git.d0p.dev](https://git.d0p.dev)
 
 ## Singleplayer
 
