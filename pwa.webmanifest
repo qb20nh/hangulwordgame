@@ -1,0 +1,40 @@
+{
+    "id": "dev.d0p.hangulwordgame",
+    "name": "한글 단어 찾기 게임",
+    "short_name": "한글단어찾기",
+    "icons": [
+        {
+        "src": "/images/icon.svg",
+        "type": "image/svg+xml",
+        "sizes": "512x512"
+        },
+        {
+        "src": "/images/icon512.png",
+        "type": "image/png",
+        "sizes": "512x512"
+        },
+        {
+        "src": "/images/icon192.png",
+        "type": "image/png",
+        "sizes": "192x192"
+        },
+        {
+        "src": "/images/maskable_icon.png",
+        "type": "image/png",
+        "sizes": "192x192",
+        "purpose": "maskable"
+        },
+        {
+        "src": "/images/monochrome_icon.png",
+        "type": "image/png",
+        "sizes": "128x128",
+        "purpose": "monochrome"
+        }
+    ],
+    "start_url": "https://git.d0p.dev",
+    "display": "standalone",
+    "prefer_related_applications": false,
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff"
+}
+

@@ -4,8 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="darkreader-lock">
+  <meta name="background-color" content="#ffffff">
+  <meta name="background-color" media="(prefers-color-scheme: dark)" content="#101010">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101010">
   <title>한글 단어 찾기 게임</title>
   <link rel="stylesheet" href="css.css">
+  <link rel="manifest" href="pwa.webmanifest">
+  <link rel="icon" href="images/icon.svg">
 </head>
 <body>
   <script>const begin = performance.now()</script>
@@ -13,6 +19,7 @@
     <nav>
       <button id="dark-mode-toggle" title="다크 모드 전환" data-mode="system" data-mode-options="system|dark|light"><span id="sun"></span><span id="moon"></span></button>
     </nav>
+    <img src="images/icon.svg">
   </header>
   <main>
     <template id="word-template">
@@ -61,6 +68,7 @@
       <button type="submit" title="닫기">❌닫기</button>
     </form>
   </dialog>
+  <dialog id="game-end"></dialog>
   <script src="js.js"></script>
 </body>
 </html>
