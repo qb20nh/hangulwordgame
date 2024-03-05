@@ -7,7 +7,7 @@ const setIntervalWithReset = (fn, ms, ...args) => {
   intervals.push(id)
   return id
 }
-const GAME_VERSION = 1
+const GAME_VERSION = 2
 
 const scriptHTML = document.currentScript.outerHTML
 const initialHTMLWithoutThisScript = document.body.innerHTML.replace(scriptHTML, '')
@@ -370,9 +370,6 @@ function init() {
   const getPosition = (x, y, direction, progress) => {
     if (direction < 0 || direction > 7) {
       throw new RangeError('direction must be 0 to 7')
-    }
-    if (progress < 0) {
-      throw new RangeError('progress must be 0 or greater')
     }
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
@@ -777,6 +774,16 @@ function init() {
     }
   })
 
+  function calculateOvershoot(value, min, max) {
+    if (value < min) {
+      return min - value
+    }
+    if (value > max) {
+      return value - max
+    }
+    return 0
+  }
+
   document.addEventListener('pointermove', (e) => {
     if (pointerdown.value) {
       e.preventDefault()
@@ -795,7 +802,15 @@ function init() {
           dragEndPos = pos
           dragDir = dir
         } else if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
-          dragEndPos = getClosestOctilinearPoint(dragStartPos, pos, dragDir)
+          let [cx, cy] = getClosestOctilinearPoint(dragStartPos, pos, dragDir)
+          if (cx < 0 || cx >= width || cy < 0 || cy >= height) {
+            const correctedDragDir = isOctilinear(dragStartPos, [cx, cy])
+            const overshootX = calculateOvershoot(cx, 0, width - 1)
+            const overshootY = calculateOvershoot(cy, 0, height - 1)
+            const maxOvershoot = Math.max(overshootX, overshootY);
+            [cx, cy] = getPosition(cx, cy, correctedDragDir, -maxOvershoot)
+          }
+          dragEndPos = [cx, cy]
         }
         if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
           const closestIndex = dragEndPos[1] * width + dragEndPos[0]
