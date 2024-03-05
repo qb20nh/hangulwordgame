@@ -770,13 +770,12 @@ function init() {
   }
 
   jamoBoardElement.addEventListener('pointerdown', (e) => {
-    const jamoElement = document.elementFromPoint(e.clientX, e.clientY)
-    if (jamoElement.matches('#jamo-board>i')) {
+    if (e.target.matches('#jamo-board>i')) {
       pointerdown.value = true
       if (DEBUG) {
         jamoElement.classList.add('start')
       }
-      dragStartPos = indexToPos(jamoElement.dataset.index * 1)
+      dragStartPos = calculateCellPosFromCoords(e.clientX, e.clientY)
       dragEndPos = [-1, -1]
       dragDir = -1
       updateJamoCompletion()
@@ -801,43 +800,67 @@ function init() {
     return 0
   }
 
+  function calculateBoardPosition() {
+    const boardElementRect = jamoBoardElement.getBoundingClientRect()
+    return [boardElementRect.left, boardElementRect.top]
+  }
+
+  function calculateCellSize() {
+    const firstElement = jamoElements[0]
+    const rightElement = jamoElements[1]
+    const bottomElement = jamoElements[width]
+    const firstRect = firstElement.getBoundingClientRect()
+    const rightRect = rightElement.getBoundingClientRect()
+    const bottomRect = bottomElement.getBoundingClientRect()
+    const cellWidth = rightRect.left - firstRect.left
+    const cellHeight = bottomRect.top - firstRect.top
+    return [cellWidth, cellHeight]
+  }
+
+  function calculateCellPosFromCoords(clientX, clientY) {
+    const [boardLeft, boardTop] = calculateBoardPosition()
+    const [cellWidth, cellHeight] = calculateCellSize()
+    const [relativeX, relativeY] = [clientX - boardLeft, clientY - boardTop]
+    const [cellX, cellY] = [Math.floor(relativeX / cellWidth), Math.floor(relativeY / cellHeight)]
+    return [cellX, cellY]
+  }
+
   document.addEventListener('pointermove', (e) => {
     if (pointerdown.value) {
       e.preventDefault()
-      const jamoElement = document.elementFromPoint(e.clientX, e.clientY)
-      if (jamoElement?.matches('#jamo-board>i')) {
-        const pos = indexToPos(jamoElement.dataset.index * 1)
-        if (dragStartPos[0] === pos[0] && dragStartPos[1] === pos[1]) {
-          return
+      const pos = calculateCellPosFromCoords(e.clientX, e.clientY)
+      if (dragStartPos[0] === pos[0] && dragStartPos[1] === pos[1]) {
+        return
+      }
+      if (DEBUG) {
+        jamoBoardElement.querySelector('.mid')?.classList.remove('mid')
+        jamoElement.classList.add('mid')
+      }
+      const dir = isOctilinear(dragStartPos, pos)
+      if (dir !== -1) {
+        dragEndPos = pos
+        dragDir = dir
+      } else if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
+        dragEndPos = getClosestOctilinearPoint(dragStartPos, pos, dragDir)
+      }
+      if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
+        let [cx, cy] = dragEndPos
+        if (cx < 0 || cx >= width || cy < 0 || cy >= height) {
+          const correctedDragDir = isOctilinear(dragStartPos, [cx, cy])
+          const overshootX = calculateOvershoot(cx, 0, width - 1)
+          const overshootY = calculateOvershoot(cy, 0, height - 1)
+          const maxOvershoot = Math.max(overshootX, overshootY);
+          [cx, cy] = getPosition(cx, cy, correctedDragDir, -maxOvershoot)
         }
+        dragEndPos = [cx, cy]
+
+        const closestIndex = dragEndPos[1] * width + dragEndPos[0]
+        const closestElement = jamoElements[closestIndex]
         if (DEBUG) {
-          jamoBoardElement.querySelector('.mid')?.classList.remove('mid')
-          jamoElement.classList.add('mid')
+          jamoBoardElement.querySelector('.end')?.classList.remove('end')
+          closestElement.classList.add('end')
         }
-        const dir = isOctilinear(dragStartPos, pos)
-        if (dir !== -1) {
-          dragEndPos = pos
-          dragDir = dir
-        } else if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
-          let [cx, cy] = getClosestOctilinearPoint(dragStartPos, pos, dragDir)
-          if (cx < 0 || cx >= width || cy < 0 || cy >= height) {
-            const correctedDragDir = isOctilinear(dragStartPos, [cx, cy])
-            const overshootX = calculateOvershoot(cx, 0, width - 1)
-            const overshootY = calculateOvershoot(cy, 0, height - 1)
-            const maxOvershoot = Math.max(overshootX, overshootY);
-            [cx, cy] = getPosition(cx, cy, correctedDragDir, -maxOvershoot)
-          }
-          dragEndPos = [cx, cy]
-        }
-        if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
-          const closestIndex = dragEndPos[1] * width + dragEndPos[0]
-          const closestElement = jamoElements[closestIndex]
-          if (DEBUG) {
-            jamoBoardElement.querySelector('.end')?.classList.remove('end')
-            closestElement.classList.add('end')
-          }
-          updateJamoCompletion()
-        }
+        updateJamoCompletion()
       }
     }
   })
