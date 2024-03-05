@@ -12,7 +12,7 @@
   - [ ] Numbered stages(infinitely many)
 - [ ] Speech API to speak out completed word
 - [ ] Cheat prevention (browser find feature)
-  - [ ] pointer position based tracking instead of using element hover state
+  - [x] pointer position based tracking instead of using element hover state
 - [ ] Time the stage completion
 - [ ] Share API to share the result time
 
