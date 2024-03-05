@@ -220,7 +220,7 @@ function init() {
     if (gameVersion * 1 !== GAME_VERSION) {
       throw new Error('The saved game state is from a different version of the game.')
     }
-    const expectedChecksum = calculateChecksum(`${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`)
+    const expectedChecksum = calculateChecksum(`${gameVersion}|${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`)
     if (expectedChecksum !== checksum * 1) {
       throw new Error('saved game state is corrupted')
     }
