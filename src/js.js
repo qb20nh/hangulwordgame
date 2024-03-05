@@ -903,6 +903,20 @@ function init() {
     }
   })
 
+  requestIdleCallback(() => {
+    // preload images
+    const imageElements = wordList.map(word => {
+      const img = document.createElement('img')
+      img.src = `/images/wordsets/0/${word}.webp`
+      return img
+    })
+    imageElements.forEach(img => img.decode().then(() => {
+      console.log('decoded', img.src)
+    }).catch(() => {
+      console.log('failed to decode', img.src)
+    }))
+  })
+
   const gameInitialized = performance.now()
 
   const PROFILE = false

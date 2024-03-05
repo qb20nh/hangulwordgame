@@ -1,2 +1,8 @@
 # nodejs
 node_modules
+
+images/wordsets/*/original
+
+.DS_Store
+._*
+
