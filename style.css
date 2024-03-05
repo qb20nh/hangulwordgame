@@ -270,3 +270,43 @@ main {
 main>* {
   font-size: 1rem;
 }
+
+.noresize {
+  resize: none;
+}
+
+#file-wrapper {
+  display: inline-block;
+  position: relative;
+  width: 150px; /* Adjust as needed */
+  height: 100px; /* Adjust as needed */
+  text-align: center;
+  border: 1px solid buttonborder;
+  border-radius: 2px;
+}
+#file-wrapper:where(:focus-visible, :focus-within) {
+  outline: -webkit-focus-ring-color auto 1px;
+}
+
+#select-game-state-file {
+  cursor: pointer;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+#file-wrapper::before {
+  content: '📁'; /* Folder emoji */
+  font-size: 50px; /* Adjust emoji size */
+  display: block;
+  margin-bottom: 10px; /* Space between emoji and text */
+}
+
+#file-wrapper::after {
+  content: '파일 불러오기'; /* Text below emoji */
+  display: block;
+  font-size: 14px; /* Adjust text size */
+}

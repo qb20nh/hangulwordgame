@@ -139,9 +139,13 @@ function init() {
 
   const compositeToSimpleJamoMap = Object.fromEntries(Object.entries(simpleTocompositeJamoMap).map(([simple, composite]) => [composite, simple]))
 
+  let randomHueBase = -1
   let previousGameState
   try {
     previousGameState = deserializeGameState(load('gameState'))
+    if (previousGameState) {
+      randomHueBase = previousGameState[5]
+    }
   } catch (e) {
     console.error(e)
     clear('gameState')
@@ -200,7 +204,10 @@ function init() {
   function serializeGameState() {
     const words = wordList.join()
     const jamoBoard = Array.from({ length: width * height }, (_, i) => jamoElements[i].textContent).join('')
-    const gs = `${words}|${width}|${height}|${jamoBoard}`
+    const completions = Array.from(jamoBoardElement.querySelectorAll('.completion-bar')).filter((elem) => elem !== currentJamoCompletion).map(elem => {
+      return `${elem.dataset.start},${elem.dataset.end}`
+    }).join()
+    const gs = `${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`
     return `${gs}|${calculateChecksum(gs)}`
   }
 
@@ -208,15 +215,28 @@ function init() {
     if (gs === null) {
       return null
     }
-    const [words, width, height, jamoBoard, checksum] = gs.split('|')
-    const expectedChecksum = calculateChecksum(`${words}|${width}|${height}|${jamoBoard}`)
+    const [words, width, height, jamoBoard, completions, randomHueBase, checksum] = gs.split('|')
+    const expectedChecksum = calculateChecksum(`${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`)
     if (expectedChecksum !== checksum * 1) {
       throw new Error('saved game state is corrupted')
     }
     if (jamoBoard.length !== width * height) {
       throw new Error('saved game state is corrupted')
     }
-    return [words.split(','), width * 1, height * 1, jamoBoard]
+    return [
+      words.split(','),
+      width * 1,
+      height * 1,
+      jamoBoard,
+      completions ? completions.split(',').map(Number).reduce((acc, val) => {
+        if (!acc.length || acc.at(-1).length === 4) {
+          acc.push([])
+        }
+        acc.at(-1).push(val)
+        return acc
+      }, []) : [],
+      randomHueBase * 1
+    ]
   }
 
 
@@ -350,9 +370,9 @@ function init() {
     if (progress < 0) {
       throw new RangeError('progress must be 0 or greater')
     }
-    for (let dx = -1; i <= 1; i++) {
-      for (let dy = -1; j <= 1; j++) {
-        if (dirMap[dx + 1][dy + 1] === direction) {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dirMap[dy + 1][dx + 1] === direction) {
           return [x + dx * progress, y + dy * progress]
         }
       }
@@ -408,9 +428,6 @@ function init() {
       const jamoElement = jamoElements[jamoIndex]
       jamoElement.textContent = jamo
     }
-    if (DEBUG) {
-      appendCompletionBarElement(startX, startY, endX, endY)
-    }
 
     return true
   }
@@ -464,8 +481,17 @@ function init() {
     return completionBarElement
   }
 
-  function appendCompletionBarElement(startX, startY, endX, endY) {
+  function markWordAsFound(wordElement, completionBarElement) {
+    wordElement.style.setProperty('--color', completionBarElement.style.getPropertyValue('--color'))
+    wordElement.classList.add('found')
+  }
+
+  function markCompletionAsCompleted(startX, startY, endX, endY) {
     const completionBarElement = createCompletionBarElement(startX, startY, endX, endY)
+    const jamoSequence = completionToJamoSequence(startX, startY, endX, endY)
+    const foundWord = findWordByJamoSequence(jamoSequence)
+    const wordElement = wordListElement.querySelector(`li[data-word="${foundWord}"]`)
+    markWordAsFound(wordElement, completionBarElement)
     jamoBoardElement.appendChild(completionBarElement)
   }
 
@@ -474,7 +500,9 @@ function init() {
   }
 
   const colorSteps = 16
-  const randomHueBase = randomInt(0, 359)
+  if (!previousGameState) {
+    randomHueBase = randomInt(0, 359)
+  }
 
   function randomFromCoords(x, y) {
     const dot = x * 12.9898 + y * 78.233
@@ -533,6 +561,10 @@ function init() {
       reset()
       return
     }
+  } else {
+    previousGameState[4].forEach(([startX, startY, endX, endY]) => {
+      markCompletionAsCompleted(startX, startY, endX, endY)
+    })
   }
 
   // add event listener for dark mode toggle
@@ -643,74 +675,79 @@ function init() {
     }
   }
 
-  let currentJamoComletion = null
+  let currentJamoCompletion = null
 
   function updateJamoCompletion() {
     if (dragStartPos[0] !== -1 && dragStartPos[1] !== -1) {
-      const exists = currentJamoComletion !== null
+      const exists = currentJamoCompletion !== null
       const [sx, sy] = dragStartPos
       const [ex, ey] = dragEndPos[0] === -1 && dragEndPos[1] === -1 ? [sx, sy] : dragEndPos
-      currentJamoComletion = createCompletionBarElement(sx, sy, ex, ey, currentJamoComletion)
+      currentJamoCompletion = createCompletionBarElement(sx, sy, ex, ey, currentJamoCompletion)
       if (!exists) {
-        jamoBoardElement.appendChild(currentJamoComletion)
+        jamoBoardElement.appendChild(currentJamoCompletion)
       }
     }
   }
 
-  function checkJamoCompletion(currentJamoCompletion) {
+  function createRange(start, end) {
+    const inc = start < end ? 1 : -1;
+    const result = [];
+    for (let i = 0; i <= Math.abs(end - start); i += 1) {
+      result.push(i * inc + start)
+    }
+    return result
+  }
+
+  function completionToJamoSequence(startX, startY, endX, endY) {
+    const rangeX = createRange(startX, endX)
+    const rangeY = createRange(startY, endY)
+    const longer = Math.max(rangeX.length, rangeY.length)
+    const coords = Array.from({ length: longer }, (_, i) => [rangeX[i] ?? startX, rangeY[i] ?? startY])
+    return coords.map(([x, y]) => jamoElements[y * width + x].textContent).join('')
+  }
+
+  function findWordByJamoSequence(jamoSequence) {
+    return wordList.find(word => {
+      const [simple, reversed] = memo(word, () => {
+        const simple = simpleJamoBreakdown(word)
+        return [simple.join(''), simple.toReversed().join('')]
+      })
+      return simple === jamoSequence || reversed === jamoSequence
+    })
+  }
+
+  function checkJamoCompletion(jamoCompletionElement) {
     try {
-      if (currentJamoCompletion === null) {
+      if (jamoCompletionElement === null) {
         return
       }
-      // get jamo sequence from current jamo completion
-      const [startX, startY] = currentJamoCompletion.dataset.start.split(',').map(Number)
-      const [endX, endY] = currentJamoCompletion.dataset.end.split(',').map(Number)
+      const [startX, startY] = jamoCompletionElement.dataset.start.split(',').map(Number)
+      const [endX, endY] = jamoCompletionElement.dataset.end.split(',').map(Number)
       if (startX === endX && startY === endY) {
-        // didn't move
-        currentJamoCompletion.remove()
+        jamoCompletionElement.remove()
         return
       }
-      // determine direction
       const dir = isOctilinear([startX, startY], [endX, endY])
       if (dir === -1) {
-        currentJamoCompletion.remove()
+        jamoCompletionElement.remove()
         return
       }
-      const createRange = (start, end) => {
-        const inc = start < end ? 1 : -1;
-        const result = [];
-        for (let i = 0; i <= Math.abs(end - start); i += 1) {
-          result.push(i * inc + start)
-        }
-        return result
-      }
-      const rangeX = createRange(startX, endX)
-      const rangeY = createRange(startY, endY)
-      const longer = Math.max(rangeX.length, rangeY.length)
-      const coords = Array.from({ length: longer }, (_, i) => [rangeX[i] ?? startX, rangeY[i] ?? startY])
-      const jamoSequence = coords.map(([x, y]) => jamoElements[y * width + x].textContent).join('')
-      const foundWord = wordList.find(word => {
-        const [simple, reversed] = memo(word, () => {
-          const simple = simpleJamoBreakdown(word)
-          return [simple.join(''), simple.toReversed().join('')]
-        })
-        return simple === jamoSequence || reversed === jamoSequence
-      })
+      const jamoSequence = completionToJamoSequence(startX, startY, endX, endY)
+      const foundWord = findWordByJamoSequence(jamoSequence)
       if (foundWord) {
         const wordElement = wordListElement.querySelector(`li[data-word="${foundWord}"]`)
         if (wordElement) {
           if (wordElement.classList.contains('found')) {
-            currentJamoCompletion.remove()
+            jamoCompletionElement.remove()
           } else {
-            wordElement.style.setProperty('--color', currentJamoCompletion.style.getPropertyValue('--color'))
-            wordElement.classList.add('found')
+            markWordAsFound(wordElement, jamoCompletionElement)
           }
         }
       } else {
-        currentJamoCompletion.remove()
+        jamoCompletionElement.remove()
       }
     } finally {
-      currentJamoComletion = null
+      currentJamoCompletion = null
     }
   }
 
@@ -732,7 +769,7 @@ function init() {
     isRightClick = e.button === 2
     pointerdown.value = false
     if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1 && (dragStartPos[0] !== dragEndPos[0] || dragStartPos[1] !== dragEndPos[1])) {
-      checkJamoCompletion(currentJamoComletion)
+      checkJamoCompletion(currentJamoCompletion)
     }
   })
 
@@ -778,11 +815,11 @@ function init() {
   const mainElement = document.querySelector('main')
 
   const resizeToFit = () => {
-    console.log('resizeToFit')
     const screenWidth = screen.availWidth
     const screenHeight = screen.availHeight
 
     wordListElement.style.zoom = 1
+    wordListElement.style.fontSize = '1rem'
     jamoBoardElement.style.zoom = 1
     mainElement.style.zoom = 1
 
@@ -790,6 +827,7 @@ function init() {
     const jamoBoardElementWidth = jamoBoardElement.getBoundingClientRect().width
   
     wordListElement.style.zoom = Math.min(1, screenWidth / wordListElementWidth)
+    wordListElement.style.fontSize = `${1 / wordListElement.style.zoom}rem`
     jamoBoardElement.style.zoom = Math.min(1, screenWidth / jamoBoardElementWidth)
   
     const mainElementHeight = mainElement.getBoundingClientRect().height
@@ -798,7 +836,13 @@ function init() {
   }
   resizeToFit()
   window.addEventListener('resize', resizeToFit)
-  
+
+  window.addEventListener('beforeunload', () => {
+    const currentStateSaved = load('gameState')
+    if (currentStateSaved) {
+      save('gameState', serializeGameState())
+    }
+  })
 
   const gameInitialized = performance.now()
 
@@ -904,3 +948,7 @@ function showCrazyShit() {
   }, [])
 
 }
+
+document.getElementById('show-settings-panel').addEventListener('click', () => {
+  document.getElementById('settings-panel').showModal()
+})
