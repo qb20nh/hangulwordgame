@@ -310,3 +310,7 @@ main>* {
   display: block;
   font-size: 14px; /* Adjust text size */
 }
+
+#settings-panel::backdrop {
+  background: #0004;
+}

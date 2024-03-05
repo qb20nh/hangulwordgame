@@ -7,6 +7,7 @@ const setIntervalWithReset = (fn, ms, ...args) => {
   intervals.push(id)
   return id
 }
+const GAME_VERSION = 1
 
 const scriptHTML = document.currentScript.outerHTML
 const initialHTMLWithoutThisScript = document.body.innerHTML.replace(scriptHTML, '')
@@ -207,7 +208,7 @@ function init() {
     const completions = Array.from(jamoBoardElement.querySelectorAll('.completion-bar')).filter((elem) => elem !== currentJamoCompletion).map(elem => {
       return `${elem.dataset.start},${elem.dataset.end}`
     }).join()
-    const gs = `${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`
+    const gs = `${GAME_VERSION}|${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`
     return `${gs}|${calculateChecksum(gs)}`
   }
 
@@ -215,7 +216,10 @@ function init() {
     if (gs === null) {
       return null
     }
-    const [words, width, height, jamoBoard, completions, randomHueBase, checksum] = gs.split('|')
+    const [gameVersion, words, width, height, jamoBoard, completions, randomHueBase, checksum] = gs.split('|')
+    if (gameVersion * 1 !== GAME_VERSION) {
+      throw new Error('The saved game state is from a different version of the game.')
+    }
     const expectedChecksum = calculateChecksum(`${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`)
     if (expectedChecksum !== checksum * 1) {
       throw new Error('saved game state is corrupted')
