@@ -35,7 +35,7 @@ body {
 #jamo-board {
   display: grid;
   grid-template-columns: repeat(var(--width), 1fr);
-  gap: var(--gap);
+  gap: calc(var(--gap) * var(--zoom));
   padding: 0;
   margin: 0;
   position: relative;
@@ -47,14 +47,19 @@ body {
 #jamo-board>i {
   text-align: center;
   display: inline-block;
-  width: var(--size);
-  height: var(--size);
-  font-size: var(--size);
+  width: calc(var(--size) * var(--zoom));
+  height: calc(var(--size) * var(--zoom));
+  font-size: calc(var(--size) * var(--zoom));
   line-height: 1;
   user-select: none;
   cursor: pointer;
   font-style: normal;
   position: relative;
+}
+
+#jamo-board>i::after {
+  content: attr(data-jamo);
+  display: inline-block;
 }
 
 :root[data-mode="dark"] #jamo-board>i::before {
@@ -83,8 +88,8 @@ body {
 #jamo-board>i::before {
   content: '';
   display: inline-block;
-  width: calc(var(--size) * 1.414);
-  height: calc(var(--size) * 1.414);
+  width: calc(var(--size) * 1.414 * var(--zoom));
+  height: calc(var(--size) * 1.414 * var(--zoom));
   top: 50%;
   left: 50%;
   border-radius: 50%;
@@ -98,11 +103,6 @@ body {
   opacity: 0.15;
 }
 
-#jamo-board:has(i:active) {
-  padding: calc(var(--gap)/4);
-  margin: calc(var(--gap)/-4);
-}
-
 #jamo-board>.written {
   background-color: var(--color);
 }
@@ -110,10 +110,10 @@ body {
 #jamo-board>.completion-bar {
   /* remove from grid flow */
   position: absolute;
-  top: var(--top);
-  left: var(--left);
-  width: var(--width);
-  height: var(--height);
+  top: calc(var(--top) * var(--zoom));
+  left: calc(var(--left) * var(--zoom));
+  width: calc(var(--width) * var(--zoom));
+  height: calc(var(--height) * var(--zoom));
 
   /* outline: 1px solid red; */
   pointer-events: none;
@@ -124,14 +124,14 @@ body {
   content: '';
   position: absolute;
   background-color: var(--color); /* Line color */
-  height:var(--thick); /* Line thickness */
+  height: calc(var(--thick) * var(--zoom)); /* Line thickness */
 
   /* Calculate the bottom-left point of the line */
   top: 50%;
   left: 50%;
 
   /* Length of the line using hypot(), assuming --delta-x and --delta-y are defined */
-  width: var(--hypot);
+  width: calc(var(--hypot) * var(--zoom));
 
   /* Rotate line using atan2(), converting result from radians to degrees */
   transform: translate(-50%, -50%) rotate(var(--angle));
@@ -143,7 +143,7 @@ body {
 
   z-index: -2;
 
-  border-radius: var(--thick);
+  border-radius: calc(var(--thick) * var(--zoom));
 
   /* filter: url(#displacementFilter); */
 }
@@ -171,7 +171,7 @@ nav {
   -webkit-tap-highlight-color: transparent;
 }
 
-.notransition, .notransition>* {
+.no-transition, .no-transition>* {
   transition: none !important;
 }
 

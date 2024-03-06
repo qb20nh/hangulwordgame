@@ -1,17 +1,17 @@
-<img src="images/icon.svg" width="192" height="192">
+<img src="images/icon.svg" width="192" height="192" alt="ㅎㅏㄴㄱ">
 
 # 한글 단어 찾기 게임
 
 [https://git.d0p.dev](https://git.d0p.dev)
 
-## Singleplayer
+## Single player
 
 - [x] Restart game after solving the stage
 - [ ] Add events for settings panel
 - [ ] Seed-based board generation
   - [ ] Numbered stages(infinitely many)
 - [ ] Speech API to speak out completed word
-- [ ] Cheat prevention (browser find feature)
+- [x] Cheat prevention (browser find feature)
   - [x] pointer position based tracking instead of using element hover state
 - [ ] Time the stage completion
 - [ ] Share API to share the result time

@@ -1,18 +1,39 @@
-const documentParsed = performance.now()
-let preventInitCall = false
-const DEBUG = false
-const intervals = []
-const setIntervalWithReset = (fn, ms, ...args) => {
-  const id = setInterval(fn, ms, ...args)
-  intervals.push(id)
-  return id
+const DO_NOT_CHANGE_KEEP_FALSE = false
+// block to satisfy linter that will be removed at minify
+if (DO_NOT_CHANGE_KEEP_FALSE) {
+  /* eslint-disable no-use-before-define, no-var */
+  if (!localStorage) {
+    var localStorage = window.localStorage
+  }
+  if (!requestIdleCallback) {
+    var requestIdleCallback = window.requestIdleCallback
+  }
+  if (!requestAnimationFrame) {
+    var requestAnimationFrame = window.requestAnimationFrame
+  }
+  if (!screen) {
+    var screen = window.screen
+  }
+  /* eslint-enable no-use-before-define, no-var */
 }
+
 const GAME_VERSION = 3
+const DEBUG = false
+const PROFILE = false
+
+const documentParsed = performance.now()
+
+function toSingleNumber (x, y) {
+  const smallStep = x >= y ? y : x + y + 1
+  const bigStep = Math.max(x, y) ** 2
+  return smallStep + bigStep
+}
+window.toSingleNumber = toSingleNumber
 
 const scriptHTML = document.currentScript.outerHTML
 const initialHTMLWithoutThisScript = document.body.innerHTML.replace(scriptHTML, '')
 
-let wordListFull = `사과
+const wordListFull = `사과
 바나나
 포도
 딸기
@@ -87,58 +108,55 @@ let wordListFull = `사과
 가지
 노각`.split('\n')
 
-function init() {
+function init () {
   'use strict'
-  if (preventInitCall) {
-    throw new Error('This function should not be called more than once.')
+  if (window.hwgInitialized) {
+    throw new Error('Game was already initialized.')
   }
 
-  preventInitCall = true
+  window.hwgInitialized = true
 
-  
   const dirMap = [
     [3, 2, 1],
     [4, -1, 0],
     [5, 6, 7]
   ]
 
-
   const [nfdChoBase, nfdJungBase, nfdJongBase] = [...'각'.normalize('NFD')]
   const simpleJungBase = 'ㅏ'
   const jungDiff = simpleJungBase.charCodeAt(0) - nfdJungBase.charCodeAt(0)
 
-
-  const simpleTocompositeJamoMap = {
-    'ㄱㄱ': 'ㄲ',
-    'ㄱㅅ': 'ㄳ',
-    'ㄴㅈ': 'ㄵ',
-    'ㄴㅎ': 'ㄶ',
-    'ㄷㄷ': 'ㄸ',
-    'ㄹㄱ': 'ㄺ',
-    'ㄹㅁ': 'ㄻ',
-    'ㄹㅂ': 'ㄼ',
-    'ㄹㅅ': 'ㄽ',
-    'ㄹㅌ': 'ㄾ',
-    'ㄹㅍ': 'ㄿ',
-    'ㄹㅎ': 'ㅀ',
-    'ㅂㅂ': 'ㅃ',
-    'ㅂㅅ': 'ㅄ',
-    'ㅅㅅ': 'ㅆ',
-    'ㅈㅈ': 'ㅉ',
-    'ㅏㅣ': 'ㅐ',
-    'ㅑㅣ': 'ㅒ',
-    'ㅓㅣ': 'ㅔ',
-    'ㅕㅣ': 'ㅖ',
-    'ㅗㅏ': 'ㅘ',
-    'ㅗㅏㅣ': 'ㅙ',
-    'ㅗㅣ': 'ㅚ',
-    'ㅜㅓ': 'ㅝ',
-    'ㅜㅓㅣ': 'ㅞ',
-    'ㅜㅣ': 'ㅟ',
-    'ㅡㅣ': 'ㅢ'
+  const simpleToCompositeJamoMap = {
+    ㄱㄱ: 'ㄲ',
+    ㄱㅅ: 'ㄳ',
+    ㄴㅈ: 'ㄵ',
+    ㄴㅎ: 'ㄶ',
+    ㄷㄷ: 'ㄸ',
+    ㄹㄱ: 'ㄺ',
+    ㄹㅁ: 'ㄻ',
+    ㄹㅂ: 'ㄼ',
+    ㄹㅅ: 'ㄽ',
+    ㄹㅌ: 'ㄾ',
+    ㄹㅍ: 'ㄿ',
+    ㄹㅎ: 'ㅀ',
+    ㅂㅂ: 'ㅃ',
+    ㅂㅅ: 'ㅄ',
+    ㅅㅅ: 'ㅆ',
+    ㅈㅈ: 'ㅉ',
+    ㅏㅣ: 'ㅐ',
+    ㅑㅣ: 'ㅒ',
+    ㅓㅣ: 'ㅔ',
+    ㅕㅣ: 'ㅖ',
+    ㅗㅏ: 'ㅘ',
+    ㅗㅏㅣ: 'ㅙ',
+    ㅗㅣ: 'ㅚ',
+    ㅜㅓ: 'ㅝ',
+    ㅜㅓㅣ: 'ㅞ',
+    ㅜㅣ: 'ㅟ',
+    ㅡㅣ: 'ㅢ'
   }
 
-  const compositeToSimpleJamoMap = Object.fromEntries(Object.entries(simpleTocompositeJamoMap).map(([simple, composite]) => [composite, simple]))
+  const compositeToSimpleJamoMap = Object.fromEntries(Object.entries(simpleToCompositeJamoMap).map(([simple, composite]) => [composite, simple]))
 
   let randomHueBase = -1
   let previousGameState
@@ -156,7 +174,7 @@ function init() {
 
   const wordCount = 16
 
-  function simpleJamoBreakdown(word) {
+  function simpleJamoBreakdown (word) {
     return [...word.normalize('NFC')].flatMap(decomposeIntoSimple)
   }
 
@@ -191,20 +209,18 @@ function init() {
     isRightClick = false
   })
 
-
   const width = 12
   const height = 12
 
-  const simpleJamoList = `ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎㅏㅑㅓㅕㅗㅛㅜㅠㅡㅣ`
+  const simpleJamoList = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎㅏㅑㅓㅕㅗㅛㅜㅠㅡㅣ'
 
-
-  function calculateChecksum(gs) {
+  function calculateChecksum (gs) {
     return [...gs].map(c => c.charCodeAt()).reduce((acc, val) => ((acc >>> 1) | ((acc & 1) << 15)) ^ val, 0)
   }
 
-  function serializeGameState() {
+  function serializeGameState () {
     const words = wordList.join()
-    const jamoBoard = Array.from({ length: width * height }, (_, i) => jamoElements[i].textContent).join('')
+    const jamoBoard = Array.from({ length: width * height }, (_, i) => jamoElements[i].dataset.jamo).join('')
     const completions = Array.from(jamoBoardElement.querySelectorAll('.completion-bar')).filter((elem) => elem !== currentJamoCompletion).map(elem => {
       return `${elem.dataset.start},${elem.dataset.end}`
     }).join()
@@ -212,7 +228,17 @@ function init() {
     return `${gs}|${calculateChecksum(gs)}`
   }
 
-  function deserializeGameState(gs) {
+  function groupElements (arr, numElements) {
+    return arr.reduce((acc, val) => {
+      if (!acc.length || acc.at(-1).length === numElements) {
+        acc.push([])
+      }
+      acc.at(-1).push(val)
+      return acc
+    }, [])
+  }
+
+  function deserializeGameState (gs) {
     if (gs === null) {
       return null
     }
@@ -232,58 +258,53 @@ function init() {
       width * 1,
       height * 1,
       jamoBoard,
-      completions ? completions.split(',').map(Number).reduce((acc, val) => {
-        if (!acc.length || acc.at(-1).length === 4) {
-          acc.push([])
-        }
-        acc.at(-1).push(val)
-        return acc
-      }, []) : [],
+      completions
+        ? groupElements(completions.split(',').map(Number), 4)
+        : [],
       randomHueBase * 1
     ]
   }
 
-
-  function decomposeIntoSimple(char) {
+  function decomposeIntoSimple (char) {
     const [nfdCho, nfdJung, nfdJong] = [...char.normalize('NFD')].concat(['', '', '']).slice(0, 3)
-    const simpleCho = `ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ`[nfdCho.charCodeAt(0) - nfdChoBase.charCodeAt(0)]
+    const simpleCho = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[nfdCho.charCodeAt(0) - nfdChoBase.charCodeAt(0)]
     const simpleJung = String.fromCharCode(nfdJung.charCodeAt(0) + jungDiff)
-    const simpleJong = nfdJong.length ? `ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ`[nfdJong.charCodeAt(0) - nfdJongBase.charCodeAt(0)] : ''
+    const simpleJong = nfdJong.length ? 'ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ'[nfdJong.charCodeAt(0) - nfdJongBase.charCodeAt(0)] : ''
     return [simpleCho, simpleJung, simpleJong].flatMap(jamo => [...(compositeToSimpleJamoMap[jamo] ?? jamo)])
   }
 
-  function composeIntoComposite(simpleJamo) { // @TODO: complete this function
+  function composeIntoComposite (simpleJamo) { // @TODO: complete this function
     simpleJamo = [...simpleJamo]
     const hangulImeStateMachine = {
       cho: {
-        'ㄱ': ['ㄱ', 'jung'],
-        'ㄴㄹㅁㅇㅊㅋㅌㅍㅎ': ['jung'],
-        'ㄷ': ['ㄷ', 'jung'],
-        'ㅂ': ['ㅂ', 'jung'],
-        'ㅅ': ['ㅅ', 'jung'],
-        'ㅈ': ['ㅈ', 'jung'],
+        ㄱ: ['ㄱ', 'jung'],
+        ㄴㄹㅁㅇㅊㅋㅌㅍㅎ: ['jung'],
+        ㄷ: ['ㄷ', 'jung'],
+        ㅂ: ['ㅂ', 'jung'],
+        ㅅ: ['ㅅ', 'jung'],
+        ㅈ: ['ㅈ', 'jung']
       },
       jung: {
-        'ㅏㅑㅓㅕㅡ': ['ㅣ', 'jong'],
-        'ㅗ': ['ㅏ', 'ㅣ', 'jong'],
-        'ㅛㅠㅣ': ['jong'],
-        'ㅜ': ['ㅓ', 'ㅣ', 'jong'],
+        ㅏㅑㅓㅕㅡ: ['ㅣ', 'jong'],
+        ㅗ: ['ㅏ', 'ㅣ', 'jong'],
+        ㅛㅠㅣ: ['jong'],
+        ㅜ: ['ㅓ', 'ㅣ', 'jong']
       },
       jong: {
-        'ㄱ': ['ㄱ', 'ㅅ', 'cho'],
-        'ㄴ': ['ㅈ', 'ㅎ', 'cho'],
-        'ㄷㅁㅇㅈㅊㅋㅌㅍㅎ': ['cho'],
-        'ㄹ': ['ㄱ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅌ', 'ㅍ', 'ㅎ', 'cho'],
-        'ㅂ': ['ㅅ', 'cho'],
-        'ㅅ': ['ㅅ', 'cho'],
+        ㄱ: ['ㄱ', 'ㅅ', 'cho'],
+        ㄴ: ['ㅈ', 'ㅎ', 'cho'],
+        ㄷㅁㅇㅈㅊㅋㅌㅍㅎ: ['cho'],
+        ㄹ: ['ㄱ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅌ', 'ㅍ', 'ㅎ', 'cho'],
+        ㅂ: ['ㅅ', 'cho'],
+        ㅅ: ['ㅅ', 'cho']
       }
     }
-    const maxLengths = {
+    const maxLengths = Object.freeze({
       cho: 2,
       jung: 3,
       jong: 2
-    }
-    let currentLengths = {
+    })
+    const currentLengths = {
       cho: 0,
       jung: 0,
       jong: 0
@@ -299,11 +320,10 @@ function init() {
       currentLengths[currentState]++
       const transitionOptions = hangulImeStateMachine[currentState] // cho: { ... }
       const transition = Object.entries(transitionOptions).find(([jamoOptions, _]) => jamoOptions.includes(jamo))
-      if (DEBUG) debugger
       if (!transition) {
         throw new Error('cannot find suitable continuation for jamo sequence')
       }
-      const [_, targetStates] = transition // ['ㅂ', 'jung']
+      const [, targetStates] = transition // ['ㅂ', 'jung']
       if (targetStates.length === 1 || currentLengths[currentState] === maxLengths[currentState]) {
         currentLengths[currentState] = 0
         currentState = targetStates[0]
@@ -329,18 +349,18 @@ function init() {
   }
 
   const simpleJamoFromWordList = wordList.flatMap(word => [...word.normalize('NFC')].flatMap(decomposeIntoSimple))
-  const jamoFromWordlist = () => {
+  const jamoFromWordList = () => {
     return simpleJamoFromWordList[randomInt(0, simpleJamoFromWordList.length - 1)]
   }
 
   const gap = 0.75
 
-  function noTransitionZone(fn, elem) {
-    elem.classList.add('notransition')
+  function noTransitionZone (fn, elem) {
+    elem.classList.add('no-transition')
     fn()
     requestAnimationFrame(() => {
       requestAnimationFrame(() => { // 1 frame skip does not work in some cases
-        elem.classList.remove('notransition')
+        elem.classList.remove('no-transition')
       })
     })
   }
@@ -354,8 +374,8 @@ function init() {
     noTransitionZone(() => {
       for (let i = 0; i < width * height; i++) {
         const jamoElement = jamoBoardTemplate.content.cloneNode(true).querySelector('i')
-        const jamo = previousGameState ? previousGameState[3][i] : (randomInt(0, 1) ? randomJamo() : jamoFromWordlist())
-        jamoElement.textContent = jamo
+        const jamo = previousGameState ? previousGameState[3][i] : (randomInt(0, 1) ? randomJamo() : jamoFromWordList())
+        jamoElement.dataset.jamo = jamo
         jamoBoardElement.appendChild(jamoElement)
       }
     }, jamoBoardElement)
@@ -363,9 +383,7 @@ function init() {
 
   fillJamoBoard()
 
-
   const jamoWrittenPositions = Array.from({ length: width * height }, () => null)
-
 
   const getPosition = (x, y, direction, progress) => {
     if (direction < 0 || direction > 7) {
@@ -380,17 +398,17 @@ function init() {
     }
   }
 
-  const jamoElements = jamoBoardElement.querySelectorAll('#jamo-board>i');
+  const jamoElements = jamoBoardElement.querySelectorAll('#jamo-board>i')
 
   jamoElements.forEach((jamoElement, jamoIndex) => {
     jamoElement.dataset.index = jamoIndex
   })
 
   /**
-   * 
-   * @param {string} word 
-   * @param {number} x 
-   * @param {number} y 
+   *
+   * @param {string} word
+   * @param {number} x
+   * @param {number} y
    * @param {number} direction 0 to 7, starting from towards east(right) 1/8 turn CCW each step
    */
   const writeWord = (word, x, y, direction) => {
@@ -411,23 +429,13 @@ function init() {
       }
     }
 
-    let startX;
-    let startY;
-    let endX;
-    let endY;
     for (let i = 0; i < breakdown.length; i++) {
       const [targetX, targetY] = getPosition(x, y, direction, i)
-      if (i === 0) {
-        [startX, startY] = [targetX, targetY]
-      }
-      if (i === breakdown.length - 1) {
-        [endX, endY] = [targetX, targetY]
-      }
       const jamo = breakdown[i]
       const jamoIndex = targetY * width + targetX
       jamoWrittenPositions[jamoIndex] = jamo
       const jamoElement = jamoElements[jamoIndex]
-      jamoElement.textContent = jamo
+      jamoElement.dataset.jamo = jamo
     }
 
     return true
@@ -436,7 +444,7 @@ function init() {
   const cellSize = 2
   jamoBoardElement.style.setProperty('--size', `${cellSize}rem`)
 
-  function memo(key, compute) {
+  function memo (key, compute) {
     const cache = memo.cache ?? (memo.cache = new Map())
     if (cache.has(key)) {
       return cache.get(key)
@@ -446,7 +454,7 @@ function init() {
     return result
   }
 
-  function createCompletionBarElement(startX, startY, endX, endY, updateElement = null) {
+  function createCompletionBarElement (startX, startY, endX, endY, updateElement = null) {
     const completionBarTemplate = memo(createCompletionBarElement, () => document.getElementById('completion-bar-template'))
     const completionBarElement = updateElement ?? completionBarTemplate.content.cloneNode(true).querySelector('.completion-bar')
     const padding = 0.25
@@ -456,14 +464,14 @@ function init() {
 
     const sdx = Math.sign(endX - startX)
     const sdy = Math.sign(endY - startY)
-    const xmin = Math.min(startX, endX);
-    const xmax = Math.max(startX, endX);
-    const ymin = Math.min(startY, endY);
-    const ymax = Math.max(startY, endY);
-    const top = ymin * cellSize + (gap * ymin);
-    const left = xmin * cellSize + (gap * xmin);
-    const width = (xmax - xmin + 1) * cellSize + (gap * (xmax - xmin));
-    const height = (ymax - ymin + 1) * cellSize + (gap * (ymax - ymin));
+    const xMin = Math.min(startX, endX)
+    const xMax = Math.max(startX, endX)
+    const yMin = Math.min(startY, endY)
+    const yMax = Math.max(startY, endY)
+    const top = yMin * cellSize + (gap * yMin)
+    const left = xMin * cellSize + (gap * xMin)
+    const width = (xMax - xMin + 1) * cellSize + (gap * (xMax - xMin))
+    const height = (yMax - yMin + 1) * cellSize + (gap * (yMax - yMin))
 
     completionBarElement.style.setProperty('--top', `${top}em`)
     completionBarElement.style.setProperty('--left', `${left}em`)
@@ -490,12 +498,12 @@ function init() {
   yesButton.addEventListener('click', () => {
     clear('gameState')
     reset()
-  }, {passive: true})
+  }, { passive: true })
   noButton.addEventListener('click', () => {
     stageClearDialog.close()
-  }, {passive: true})
+  }, { passive: true })
 
-  function markWordAsFound(wordElement, completionBarElement) {
+  function markWordAsFound (wordElement, completionBarElement) {
     foundWords++
     wordElement.style.setProperty('--color', completionBarElement.style.getPropertyValue('--color'))
     wordElement.classList.add('found')
@@ -504,7 +512,7 @@ function init() {
     }
   }
 
-  function markCompletionAsCompleted(startX, startY, endX, endY) {
+  function markCompletionAsCompleted (startX, startY, endX, endY) {
     const completionBarElement = createCompletionBarElement(startX, startY, endX, endY)
     const jamoSequence = completionToJamoSequence(startX, startY, endX, endY)
     const foundWord = findWordByJamoSequence(jamoSequence)
@@ -513,7 +521,7 @@ function init() {
     jamoBoardElement.appendChild(completionBarElement)
   }
 
-  function randomInt(min, max) {
+  function randomInt (min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min
   }
 
@@ -522,7 +530,7 @@ function init() {
     randomHueBase = randomInt(0, 359)
   }
 
-  function randomFromCoords(x, y) {
+  function randomFromCoords (x, y) {
     const dot = x * 12.9898 + y * 78.233
     return (Math.sin(dot) * 43758.5453) % 1
   }
@@ -544,7 +552,11 @@ function init() {
     }
   }
 
-  if (!previousGameState) {
+  if (previousGameState) {
+    previousGameState[4].forEach(([startX, startY, endX, endY]) => {
+      markCompletionAsCompleted(startX, startY, endX, endY)
+    })
+  } else {
     try {
       wordList.toSorted((a, b) => {
         return simpleJamoBreakdown(b).length - simpleJamoBreakdown(a).length
@@ -569,7 +581,7 @@ function init() {
             break
           }
           if (repeated > wordCount ** 2) {
-            throw 'The board generation was stuck in impossible state, so the page was reloaded.'
+            throw new Error('The board generation was stuck in impossible state, so the page was reloaded.')
           }
           repeated++
         }
@@ -579,10 +591,6 @@ function init() {
       reset()
       return
     }
-  } else {
-    previousGameState[4].forEach(([startX, startY, endX, endY]) => {
-      markCompletionAsCompleted(startX, startY, endX, endY)
-    })
   }
 
   // add event listener for dark mode toggle
@@ -599,7 +607,7 @@ function init() {
     })
     localStorage.darkMode = nextMode
   }
-  darkModeToggleButton.addEventListener('click', toggleModes)
+  darkModeToggleButton.addEventListener('click', toggleModes, { passive: true })
   const darkMode = localStorage.darkMode
   if (darkMode) {
     noTransitionZone(() => {
@@ -618,16 +626,12 @@ function init() {
       }
     }
   })
-  
+
   let dragStartPos = [-1, -1]
   let dragDir = -1
   let dragEndPos = [-1, -1]
 
-  function indexToPos(index) {
-    return [index % width, Math.floor(index / width)]
-  }
-
-  function isOctilinear(origin, target) {
+  function isOctilinear (origin, target) {
     const [ox, oy] = origin
     const [tx, ty] = target
     const isOrthogonal = ox === tx || oy === ty
@@ -639,92 +643,85 @@ function init() {
     return dirMap[Math.sign(dy) + 1][Math.sign(dx) + 1]
   }
 
-  function getClosestOctilinearPoint(origin, target, dir) {
+  function getClosestOctilinearPoint (origin, target, dir) {
     const [ox, oy] = origin
     const [tx, ty] = target
     const [dx, dy] = [tx - ox, ty - oy]
-    let [dx1, dy1] = [tx - ox, ty - oy]
-    let [dx2, dy2] = [tx - ox, ty - oy]
+    let [dxO, dyO] = [tx - ox, ty - oy]
+    let [dxD, dyD] = [tx - ox, ty - oy]
 
-    {
-      // orthogonal
-      if (Math.abs(dx1) < Math.abs(dy1)) {
-        dx1 = 0
-      } else {
-        dy1 = 0
-      }
-    }
-
-    {
-      // diagonal
-      if ((dx2 + dy2) % 2) {
-        // parity mismatch adjustment
-        if (Math.abs(dx2) < Math.abs(dy2)) {
-          dy2 -= Math.sign(dy2)
-        } else {
-          dx2 -= Math.sign(dx2)
-        }
-      }
-      let dist = Math.abs(Math.abs(dx2) - Math.abs(dy2)) / 2
-      if (Math.abs(dx2) < Math.abs(dy2)) {
-        dx2 += Math.sign(dx2) * dist
-        dy2 -= Math.sign(dy2) * dist
-      } else {
-        dx2 -= Math.sign(dx2) * dist
-        dy2 += Math.sign(dy2) * dist
-      }
-    }
-
-    const dist1 = Math.abs(dx - dx1) + Math.abs(dy - dy1)
-    const dist2 = Math.abs(dx - dx2) + Math.abs(dy - dy2)
-
-    if (dist1 === dist2) {
-      if (dir % 2 === 0) {
-        return [ox + dx1, oy + dy1]
-      } else {
-        return [ox + dx2, oy + dy2]
-      }
+    // orthogonal
+    if (Math.abs(dxO) < Math.abs(dyO)) {
+      dxO = 0
     } else {
-      if (dist1 < dist2) {
-        return [ox + dx1, oy + dy1]
+      dyO = 0
+    }
+
+    // diagonal
+    if ((dxD + dyD) % 2) {
+      // parity mismatch adjustment
+      if (Math.abs(dxD) < Math.abs(dyD)) {
+        dyD -= Math.sign(dyD)
       } else {
-        return [ox + dx2, oy + dy2]
+        dxD -= Math.sign(dxD)
       }
+    }
+    {
+      const dist = Math.abs(Math.abs(dxD) - Math.abs(dyD)) / 2
+      if (Math.abs(dxD) < Math.abs(dyD)) {
+        dxD += Math.sign(dxD) * dist
+        dyD -= Math.sign(dyD) * dist
+      } else {
+        dxD -= Math.sign(dxD) * dist
+        dyD += Math.sign(dyD) * dist
+      }
+    }
+
+    const distO = Math.abs(dx - dxO) + Math.abs(dy - dyO)
+    const distD = Math.abs(dx - dxD) + Math.abs(dy - dyD)
+
+    if (distO === distD) {
+      return dir % 2 === 0 ? [ox + dxO, oy + dyO] : [ox + dxD, oy + dyD]
+    } else if (distO < distD) {
+      return [ox + dxO, oy + dyO]
+    } else {
+      return [ox + dxD, oy + dyD]
     }
   }
 
   let currentJamoCompletion = null
 
-  function updateJamoCompletion() {
-    if (dragStartPos[0] !== -1 && dragStartPos[1] !== -1) {
-      const exists = currentJamoCompletion !== null
-      const [sx, sy] = dragStartPos
-      const [ex, ey] = dragEndPos[0] === -1 && dragEndPos[1] === -1 ? [sx, sy] : dragEndPos
-      currentJamoCompletion = createCompletionBarElement(sx, sy, ex, ey, currentJamoCompletion)
-      if (!exists) {
-        jamoBoardElement.appendChild(currentJamoCompletion)
-      }
+  function updateJamoCompletion () {
+    if (!(dragStartPos[0] !== -1 && dragStartPos[1] !== -1)) {
+      return
+    }
+    const exists = currentJamoCompletion !== null
+    const [sx, sy] = dragStartPos
+    const [ex, ey] = dragEndPos[0] === -1 && dragEndPos[1] === -1 ? [sx, sy] : dragEndPos
+    currentJamoCompletion = createCompletionBarElement(sx, sy, ex, ey, currentJamoCompletion)
+    if (!exists) {
+      jamoBoardElement.appendChild(currentJamoCompletion)
     }
   }
 
-  function createRange(start, end) {
-    const inc = start < end ? 1 : -1;
-    const result = [];
-    for (let i = 0; i <= Math.abs(end - start); i += 1) {
+  function createRange (start, end) {
+    const inc = start < end ? 1 : -1
+    const result = []
+    for (let i = 0; i <= Math.abs(end - start); i++) {
       result.push(i * inc + start)
     }
     return result
   }
 
-  function completionToJamoSequence(startX, startY, endX, endY) {
+  function completionToJamoSequence (startX, startY, endX, endY) {
     const rangeX = createRange(startX, endX)
     const rangeY = createRange(startY, endY)
     const longer = Math.max(rangeX.length, rangeY.length)
     const coords = Array.from({ length: longer }, (_, i) => [rangeX[i] ?? startX, rangeY[i] ?? startY])
-    return coords.map(([x, y]) => jamoElements[y * width + x].textContent).join('')
+    return coords.map(([x, y]) => jamoElements[y * width + x].dataset.jamo).join('')
   }
 
-  function findWordByJamoSequence(jamoSequence) {
+  function findWordByJamoSequence (jamoSequence) {
     return wordList.find(word => {
       const [simple, reversed] = memo(word, () => {
         const simple = simpleJamoBreakdown(word)
@@ -734,7 +731,7 @@ function init() {
     })
   }
 
-  function checkJamoCompletion(jamoCompletionElement) {
+  function checkJamoCompletion (jamoCompletionElement) {
     try {
       if (jamoCompletionElement === null) {
         return
@@ -770,17 +767,15 @@ function init() {
   }
 
   jamoBoardElement.addEventListener('pointerdown', (e) => {
-    if (e.target.matches('#jamo-board>i')) {
-      pointerdown.value = true
-      if (DEBUG) {
-        jamoElement.classList.add('start')
-      }
-      dragStartPos = calculateCellPosFromCoords(e.clientX, e.clientY)
-      dragEndPos = [-1, -1]
-      dragDir = -1
-      updateJamoCompletion()
+    if (!e.target.matches('#jamo-board>i')) {
+      return
     }
-  })
+    pointerdown.value = true
+    dragStartPos = calculateCellPosFromCoords(e.clientX, e.clientY)
+    dragEndPos = [-1, -1]
+    dragDir = -1
+    updateJamoCompletion()
+  }, { passive: true })
 
   document.addEventListener('pointerup', (e) => {
     isRightClick = e.button === 2
@@ -788,9 +783,9 @@ function init() {
     if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1 && (dragStartPos[0] !== dragEndPos[0] || dragStartPos[1] !== dragEndPos[1])) {
       checkJamoCompletion(currentJamoCompletion)
     }
-  })
+  }, { passive: true })
 
-  function calculateOvershoot(value, min, max) {
+  function calculateOvershoot (value, min, max) {
     if (value < min) {
       return min - value
     }
@@ -800,75 +795,73 @@ function init() {
     return 0
   }
 
-  function calculateBoardPosition() {
-    const boardElementRect = jamoBoardElement.getBoundingClientRect()
-    return [boardElementRect.left, boardElementRect.top]
-  }
-
-  function calculateCellSize() {
+  function calculateCellSize () {
     const firstElement = jamoElements[0]
     const rightElement = jamoElements[1]
     const bottomElement = jamoElements[width]
     const firstRect = firstElement.getBoundingClientRect()
     const rightRect = rightElement.getBoundingClientRect()
     const bottomRect = bottomElement.getBoundingClientRect()
-    const cellWidth = rightRect.left - firstRect.left
-    const cellHeight = bottomRect.top - firstRect.top
-    return [cellWidth, cellHeight]
+    const cellInteractiveWidth = rightRect.left - firstRect.left
+    const cellInteractiveHeight = bottomRect.top - firstRect.top
+    const left = firstRect.left
+    const top = firstRect.top
+    const gapX = rightRect.left - firstRect.right
+    const gapY = bottomRect.top - firstRect.bottom
+    return [left, top, cellInteractiveWidth, cellInteractiveHeight, gapX, gapY]
   }
 
-  function calculateCellPosFromCoords(clientX, clientY) {
-    const [boardLeft, boardTop] = calculateBoardPosition()
-    const [cellWidth, cellHeight] = calculateCellSize()
+  function calculateCellPosFromCoords (clientX, clientY) {
+    const [left, top, cellWidth, cellHeight, gapX, gapY] = calculateCellSize()
+    const boardLeft = left - gapX / 2
+    const boardTop = top - gapY / 2
     const [relativeX, relativeY] = [clientX - boardLeft, clientY - boardTop]
     const [cellX, cellY] = [Math.floor(relativeX / cellWidth), Math.floor(relativeY / cellHeight)]
     return [cellX, cellY]
   }
 
-  function clamp(value, min, max) {
+  function clamp (value, min, max) {
     return Math.min(max, Math.max(min, value))
   }
 
   document.addEventListener('pointermove', (e) => {
-    if (pointerdown.value) {
-      e.preventDefault()
-      const pos = calculateCellPosFromCoords(e.clientX, e.clientY)
-      pos[0] = clamp(pos[0], 0, width - 1)
-      pos[1] = clamp(pos[1], 0, height - 1)
-      if (dragStartPos[0] === pos[0] && dragStartPos[1] === pos[1]) {
-        return
-      }
-      if (DEBUG) {
-        jamoBoardElement.querySelector('.mid')?.classList.remove('mid')
-        jamoElement.classList.add('mid')
-      }
-      const dir = isOctilinear(dragStartPos, pos)
-      if (dir !== -1) {
-        dragEndPos = pos
-        dragDir = dir
-      } else if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
-        dragEndPos = getClosestOctilinearPoint(dragStartPos, pos, dragDir)
-      }
-      if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
-        let [cx, cy] = dragEndPos
-        if (cx < 0 || cx >= width || cy < 0 || cy >= height) {
-          const correctedDragDir = isOctilinear(dragStartPos, [cx, cy])
-          const overshootX = calculateOvershoot(cx, 0, width - 1)
-          const overshootY = calculateOvershoot(cy, 0, height - 1)
-          const maxOvershoot = Math.max(overshootX, overshootY);
-          [cx, cy] = getPosition(cx, cy, correctedDragDir, -maxOvershoot)
-        }
-        dragEndPos = [cx, cy]
-
-        const closestIndex = dragEndPos[1] * width + dragEndPos[0]
-        const closestElement = jamoElements[closestIndex]
-        if (DEBUG) {
-          jamoBoardElement.querySelector('.end')?.classList.remove('end')
-          closestElement.classList.add('end')
-        }
-        updateJamoCompletion()
-      }
+    if (!pointerdown.value) {
+      return
     }
+    e.preventDefault()
+    const pos = calculateCellPosFromCoords(e.clientX, e.clientY)
+    pos[0] = clamp(pos[0], 0, width - 1)
+    pos[1] = clamp(pos[1], 0, height - 1)
+    if (dragStartPos[0] === pos[0] && dragStartPos[1] === pos[1]) {
+      return
+    }
+    const dir = isOctilinear(dragStartPos, pos)
+    if (dir !== -1) {
+      dragEndPos = pos
+      dragDir = dir
+    } else if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
+      dragEndPos = getClosestOctilinearPoint(dragStartPos, pos, dragDir)
+    }
+    if (!(dragEndPos[0] !== -1 && dragEndPos[1] !== -1)) {
+      return
+    }
+    let [cx, cy] = dragEndPos
+    if (cx < 0 || cx >= width || cy < 0 || cy >= height) {
+      const correctedDragDir = isOctilinear(dragStartPos, [cx, cy])
+      const overshootX = calculateOvershoot(cx, 0, width - 1)
+      const overshootY = calculateOvershoot(cy, 0, height - 1)
+      const maxOvershoot = Math.max(overshootX, overshootY);
+      [cx, cy] = getPosition(cx, cy, correctedDragDir, -maxOvershoot)
+    }
+    dragEndPos = [cx, cy]
+
+    const closestIndex = dragEndPos[1] * width + dragEndPos[0]
+    const closestElement = jamoElements[closestIndex]
+    if (DEBUG) {
+      jamoBoardElement.querySelector('.end')?.classList.remove('end')
+      closestElement.classList.add('end')
+    }
+    updateJamoCompletion()
   })
 
   if (!previousGameState) {
@@ -877,27 +870,19 @@ function init() {
 
   window.serializeGameState = serializeGameState
 
-  const mainElement = document.querySelector('main')
-
   const resizeToFit = () => {
     const screenWidth = screen.availWidth
-    const screenHeight = screen.availHeight
 
     wordListElement.style.zoom = 1
     wordListElement.style.fontSize = '1rem'
-    jamoBoardElement.style.zoom = 1
-    mainElement.style.zoom = 1
+    jamoBoardElement.style.setProperty('--zoom', 1)
 
     const wordListElementWidth = wordListElement.getBoundingClientRect().width
     const jamoBoardElementWidth = jamoBoardElement.getBoundingClientRect().width
-  
+
     wordListElement.style.zoom = Math.min(1, screenWidth / wordListElementWidth)
     wordListElement.style.fontSize = `${1 / wordListElement.style.zoom}rem`
-    jamoBoardElement.style.zoom = Math.min(1, screenWidth / jamoBoardElementWidth)
-  
-    const mainElementHeight = mainElement.getBoundingClientRect().height
-  
-    mainElement.style.zoom = Math.min(1, screenHeight / mainElementHeight)
+    jamoBoardElement.style.setProperty('--zoom', Math.min(1, screenWidth / jamoBoardElementWidth))
   }
   resizeToFit()
   window.addEventListener('resize', resizeToFit)
@@ -909,33 +894,33 @@ function init() {
     }
   })
 
-  requestIdleCallback(() => {
-    // preload images
-    const imageElements = wordList.map(word => {
-      const img = document.createElement('img')
-      img.src = `/images/wordsets/0/${word}.webp`
-      return img
-    })
-    imageElements.forEach(img => img.decode().then(() => {
-      console.log('decoded', img.src)
-    }).catch(() => {
-      console.log('failed to decode', img.src)
-    }))
-  })
+  // @TODO: show relevant image for each word after finding it
+  // requestIdleCallback(() => {
+  //   // preload images
+  //   const imageElements = wordList.map(word => {
+  //     const img = document.createElement('img')
+  //     img.src = `/images/wordsets/0/${word}.webp`
+  //     return img
+  //   })
+  //   imageElements.forEach(img => img.decode().then(() => {
+  //     console.log('decoded', img.src)
+  //   }).catch(() => {
+  //     console.log('failed to decode', img.src)
+  //   }))
+  // })
 
   const gameInitialized = performance.now()
 
-  const PROFILE = false
   if (PROFILE) {
     requestIdleCallback(() => {
       const settled = performance.now()
 
-      const t1 = documentParsed - begin
+      const t1 = documentParsed - begin // eslint-disable-line no-undef
       const t2 = jsParsed - documentParsed
       const t3 = gameInitialized - jsParsed
       const t4 = settled - gameInitialized
-      const t5 = settled - begin
-      
+      const t5 = settled - begin // eslint-disable-line no-undef
+
       const perfHistory = load('perfHistory', [])
       perfHistory.push([t1, t2, t3, t4, t5])
       save('perfHistory', perfHistory)
@@ -943,17 +928,15 @@ function init() {
   }
 }
 
-function reset() {
-  intervals.forEach(clearInterval)
-  intervals.length = 0
+function reset () {
   const children = [...document.body.children].filter(elem => elem !== document.currentScript)
   children.forEach(child => child.remove())
   document.body.innerHTML = initialHTMLWithoutThisScript
-  preventInitCall = false
+  window.hwgInitialized = false
   init()
 }
 
-function load(key, fallback) {
+function load (key, fallback) {
   const data = localStorage[key]
   if (typeof data === 'string') {
     return JSON.parse(data)
@@ -961,18 +944,20 @@ function load(key, fallback) {
   return fallback ?? null
 }
 
-function clear(key) {
+function clear (key) {
   delete localStorage[key]
 }
 
-function save(key, value) {
+function save (key, value) {
   localStorage[key] = JSON.stringify(value)
 }
 
-function average(arr) {
+function average (arr) {
   return arr.reduce((acc, val) => acc + val, 0) / arr.length
 }
-function median(arr) {
+window.average = average
+
+function median (arr) {
   const sorted = arr.slice().sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
   if (sorted.length % 2 === 0) {
@@ -980,52 +965,39 @@ function median(arr) {
   }
   return sorted[mid]
 }
+window.median = median
 
-function getCurrentFunctionName() {
+function getCurrentFunctionName () {
   const currentStackRaw = new Error().stack
   const callerLine = currentStackRaw.split('\n').slice(1)[1]
-  const caller = callerLine.match(/at (\w+)/)[1]
-  return caller
+  return callerLine.match(/at (\w+)/)[1]
 }
+window.getCurrentFunctionName = getCurrentFunctionName
 
 const jsParsed = performance.now()
 
 init()
 
-function registerKonamiCodeHandler() {
+function registerKonamiCodeHandler () {
   const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'Enter']
   let konamiCodeIndex = 0
-  const a = async (e) => {
+  const handler = async (e) => {
     if (e.key === konamiCode[konamiCodeIndex]) {
       konamiCodeIndex++
       if (konamiCodeIndex === konamiCode.length) {
         showCrazyShit()
-        window.removeEventListener('keydown', a)
+        window.removeEventListener('keydown', handler)
       }
     } else {
       konamiCodeIndex = 0
     }
   }
-  window.addEventListener('keydown', a, {passive: true})
+  window.addEventListener('keydown', handler, { passive: true })
 }
+registerKonamiCodeHandler()
 
-function showCrazyShit() {
-  const lunaticText = generateLunaticText()
-  const lunaticElement = document.createElement('div')
-  lunaticElement.textContent = lunaticText
-  document.body.appendChild(lunaticElement)
-  const slices = createRandomStyleSlices({textLength: lunaticText.length, numSlices: 100, maxLength: 5})
-  // compute overlapping slices and splice them so that they don't overlap
-  const sliceGroups = slices.reduce((acc, slice) => {
-    const last = acc[acc.length - 1]
-    if (last && last.some(s => s.start < slice.end && s.end > slice.start)) {
-      last.push(slice)
-    } else {
-      acc.push([slice])
-    }
-    return acc
-  }, [])
-
+function showCrazyShit () {
+  console.log('showing lunatic text')
 }
 
 document.getElementById('show-settings-panel').addEventListener('click', () => {
