@@ -98,7 +98,7 @@ body {
   opacity: 0.15;
 }
 
-#jamo-board:active>i {
+#jamo-board:has(i:active) {
   padding: calc(var(--gap)/4);
   margin: calc(var(--gap)/-4);
 }

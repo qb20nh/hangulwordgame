@@ -7,7 +7,7 @@ const setIntervalWithReset = (fn, ms, ...args) => {
   intervals.push(id)
   return id
 }
-const GAME_VERSION = 2
+const GAME_VERSION = 3
 
 const scriptHTML = document.currentScript.outerHTML
 const initialHTMLWithoutThisScript = document.body.innerHTML.replace(scriptHTML, '')
@@ -490,10 +490,10 @@ function init() {
   yesButton.addEventListener('click', () => {
     clear('gameState')
     reset()
-  })
+  }, {passive: true})
   noButton.addEventListener('click', () => {
     stageClearDialog.close()
-  })
+  }, {passive: true})
 
   function markWordAsFound(wordElement, completionBarElement) {
     foundWords++
@@ -825,10 +825,16 @@ function init() {
     return [cellX, cellY]
   }
 
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value))
+  }
+
   document.addEventListener('pointermove', (e) => {
     if (pointerdown.value) {
       e.preventDefault()
       const pos = calculateCellPosFromCoords(e.clientX, e.clientY)
+      pos[0] = clamp(pos[0], 0, width - 1)
+      pos[1] = clamp(pos[1], 0, height - 1)
       if (dragStartPos[0] === pos[0] && dragStartPos[1] === pos[1]) {
         return
       }
