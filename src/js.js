@@ -1,20 +1,12 @@
 const DO_NOT_CHANGE_KEEP_FALSE = false
 // block to satisfy linter that will be removed at minify
 if (DO_NOT_CHANGE_KEEP_FALSE) {
-  /* eslint-disable no-use-before-define, no-var */
-  if (!localStorage) {
-    var localStorage = window.localStorage
-  }
-  if (!requestIdleCallback) {
-    var requestIdleCallback = window.requestIdleCallback
-  }
-  if (!requestAnimationFrame) {
-    var requestAnimationFrame = window.requestAnimationFrame
-  }
-  if (!screen) {
-    var screen = window.screen
-  }
-  /* eslint-enable no-use-before-define, no-var */
+  /* eslint-disable no-var */
+  var localStorage = window.localStorage
+  var requestIdleCallback = window.requestIdleCallback
+  var requestAnimationFrame = window.requestAnimationFrame
+  var screen = window.screen
+  /* eslint-enable no-var */
 }
 
 const GAME_VERSION = 3
