@@ -1,8 +1,10 @@
 <img src="images/icon.svg" width="192" height="192" alt="ㅎㅏㄴㄱ">
 
-# 한글 단어 찾기 게임
+# ㅁㅗㅇㅏㅊㅏㅈㄱㅣ
 
 [https://git.d0p.dev](https://git.d0p.dev)
+
+한글 자모를 조합해 숨겨진 단어를 찾아내는 퍼즐 게임
 
 ## Single player
 
