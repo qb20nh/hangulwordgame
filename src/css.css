@@ -29,7 +29,7 @@ body {
 
 /* if a word is marked found, highlight it */
 #word-list>.found {
-  background-color: var(--color);
+  background-color: oklch(75% 75% calc(var(--hue) * 1deg));
 }
 
 #jamo-board {
@@ -105,10 +105,6 @@ body {
   opacity: 0.15;
 }
 
-#jamo-board>.written {
-  background-color: var(--color);
-}
-
 #jamo-board>.completion-bar {
   /* remove from grid flow */
   position: absolute;
@@ -127,7 +123,7 @@ body {
 
   content: '';
   position: absolute;
-  background-color: var(--color); /* Line color */
+  background-color: oklch(75% 75% calc(var(--hue) * 1deg)); /* Line color */
   height: calc(var(--thick) * var(--zoom)); /* Line thickness */
 
   /* Calculate the bottom-left point of the line */

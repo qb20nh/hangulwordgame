@@ -1,5 +1,5 @@
 const DO_NOT_CHANGE_KEEP_FALSE = false
-// block to satisfy linter that will be removed at minify
+// code to satisfy linter that will be removed at minify
 if (DO_NOT_CHANGE_KEEP_FALSE) {
   /* eslint-disable no-var */
   var localStorage = window.localStorage
@@ -9,18 +9,11 @@ if (DO_NOT_CHANGE_KEEP_FALSE) {
   /* eslint-enable no-var */
 }
 
-const GAME_VERSION = 3
+const GAME_VERSION = 4
 const DEBUG = false
 const PROFILE = false
 
 const documentParsed = performance.now()
-
-function toSingleNumber (x, y) {
-  const smallStep = x >= y ? y : x + y + 1
-  const bigStep = Math.max(x, y) ** 2
-  return smallStep + bigStep
-}
-window.toSingleNumber = toSingleNumber
 
 const scriptHTML = document.currentScript.outerHTML
 const initialHTMLWithoutThisScript = document.body.innerHTML.replace(scriptHTML, '')
@@ -100,6 +93,22 @@ const wordListFull = `사과
 가지
 노각`.split('\n')
 
+const random = {
+  s1: 0,
+  s2: 0,
+  setSeed (seed) {
+    this.s1 = seed
+    this.s2 = seed
+  },
+  random () {
+    this.s1 = (this.s1 * 1103515245 + 12345) & 2147483647
+    this.s2 ^= this.s2 << 13
+    this.s2 ^= this.s2 >> 17
+    this.s2 ^= this.s2 << 5
+    return (this.s1 ^ this.s2 + 2147483648) / 4294967295
+  }
+}
+
 function init () {
   'use strict'
   if (window.hwgInitialized) {
@@ -107,6 +116,8 @@ function init () {
   }
 
   window.hwgInitialized = true
+
+  const stageElement = document.getElementById('stage')
 
   const dirMap = [
     [3, 2, 1],
@@ -151,16 +162,21 @@ function init () {
   const compositeToSimpleJamoMap = Object.fromEntries(Object.entries(simpleToCompositeJamoMap).map(([simple, composite]) => [composite, simple]))
 
   let randomHueBase = -1
+  let stageNumber = 1
   let previousGameState
   try {
     previousGameState = deserializeGameState(load('gameState'))
     if (previousGameState) {
-      randomHueBase = previousGameState[5]
+      stageNumber = previousGameState[6]
     }
   } catch (e) {
     console.error(e)
     clear('gameState')
   }
+
+  stageElement.textContent = stageNumber
+
+  random.setSeed(stageNumber)
 
   const cloned = [...wordListFull]
 
@@ -170,13 +186,11 @@ function init () {
     return [...word.normalize('NFC')].flatMap(decomposeIntoSimple)
   }
 
-  const wordList = previousGameState ? previousGameState[0] : []
-  if (!previousGameState) {
-    for (let i = 0; i < wordCount; i++) {
-      wordList.push(...cloned.splice(randomInt(0, cloned.length - 1), 1))
-    }
-    cloned.length = 0
+  const wordList = []
+  for (let i = 0; i < wordCount; i++) {
+    wordList.push(...cloned.splice(randomInt(0, cloned.length - 1), 1))
   }
+  cloned.length = 0
 
   const wordListElement = document.getElementById('word-list')
   const wordListTemplate = document.getElementById('word-template')
@@ -211,13 +225,18 @@ function init () {
   }
 
   function serializeGameState () {
-    const words = wordList.join()
-    const jamoBoard = Array.from({ length: width * height }, (_, i) => jamoElements[i].dataset.jamo).join('')
     const completions = Array.from(jamoBoardElement.querySelectorAll('.completion-bar')).filter((elem) => elem !== currentJamoCompletion).map(elem => {
       return `${elem.dataset.start},${elem.dataset.end}`
     }).join()
-    const gs = `${GAME_VERSION}|${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`
-    return `${gs}|${calculateChecksum(gs)}`
+    const gsObject = {
+      GAME_VERSION,
+      width,
+      height,
+      completions,
+      stageNumber
+    }
+    const gsJSONString = JSON.stringify(gsObject)
+    return `${gsJSONString}|${calculateChecksum(gsJSONString)}`
   }
 
   function groupElements (arr, numElements) {
@@ -234,11 +253,11 @@ function init () {
     if (gs === null) {
       return null
     }
-    const [gameVersion, words, width, height, jamoBoard, completions, randomHueBase, checksum] = gs.split('|')
+    const [gameVersion, words, width, height, jamoBoard, completions, randomHueBase, stageNumber, checksum] = gs.split('|')
     if (gameVersion * 1 !== GAME_VERSION) {
       throw new Error('The saved game state is from a different version of the game.')
     }
-    const expectedChecksum = calculateChecksum(`${gameVersion}|${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}`)
+    const expectedChecksum = calculateChecksum(`${gameVersion}|${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}|${stageNumber}`)
     if (expectedChecksum !== checksum * 1) {
       throw new Error('saved game state is corrupted')
     }
@@ -253,7 +272,8 @@ function init () {
       completions
         ? groupElements(completions.split(',').map(Number), 4)
         : [],
-      randomHueBase * 1
+      randomHueBase * 1,
+      stageNumber * 1
     ]
   }
 
@@ -359,14 +379,13 @@ function init () {
 
   const fillJamoBoard = () => {
     jamoBoardElement.style.setProperty('--gap', `${gap}em`)
-    // set css variable for grid styling
     jamoBoardElement.style.setProperty('--width', width)
     jamoBoardElement.style.setProperty('--height', height)
 
     noTransitionZone(() => {
       for (let i = 0; i < width * height; i++) {
         const jamoElement = jamoBoardTemplate.content.cloneNode(true).querySelector('i')
-        const jamo = previousGameState ? previousGameState[3][i] : (randomInt(0, 1) ? randomJamo() : jamoFromWordList())
+        const jamo = randomInt(0, 1) ? randomJamo() : jamoFromWordList()
         jamoElement.dataset.jamo = jamo
         jamoBoardElement.appendChild(jamoElement)
       }
@@ -475,9 +494,8 @@ function init () {
     completionBarElement.style.setProperty('--thick', `${cellSize + padding}em`)
     completionBarElement.style.setProperty('--hypot', `${hypot}em`)
     completionBarElement.style.setProperty('--angle', `${angle}deg`)
-    const rand = Math.floor(randomFromCoords(startX, startY) * colorSteps) * Math.floor(360 / colorSteps)
-    const color = `oklch(75% 75% ${randomHueBase + rand}deg)`
-    completionBarElement.style.setProperty('--color', color)
+    const randomHue = Math.floor(randomFromCoords(startX, startY) * colorSteps) * Math.floor(360 / colorSteps)
+    completionBarElement.style.setProperty('--hue', randomHueBase + randomHue)
 
     return completionBarElement
   }
@@ -488,7 +506,11 @@ function init () {
   const yesButton = stageClearDialog.querySelector('#next-stage')
   const noButton = stageClearDialog.querySelector('#cancel-next-stage')
   yesButton.addEventListener('click', () => {
-    clear('gameState')
+    stageNumber++
+    const currentGameState = serializeGameState()
+    const parsed = deserializeGameState(currentGameState)
+    parsed[6] = stageNumber
+    save('gameState', serializeGameState())
     reset()
   }, { passive: true })
   noButton.addEventListener('click', () => {
@@ -497,7 +519,7 @@ function init () {
 
   function markWordAsFound (wordElement, completionBarElement) {
     foundWords++
-    wordElement.style.setProperty('--color', completionBarElement.style.getPropertyValue('--color'))
+    wordElement.style.setProperty('--hue', completionBarElement.style.getPropertyValue('--hue'))
     wordElement.classList.add('found')
     if (foundWords === wordCount) {
       stageClearDialog.showModal()
@@ -514,13 +536,11 @@ function init () {
   }
 
   function randomInt (min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min
+    return Math.floor(random.random() * (max - min + 1)) + min
   }
 
   const colorSteps = 16
-  if (!previousGameState) {
-    randomHueBase = randomInt(0, 359)
-  }
+  randomHueBase = randomInt(0, 359)
 
   function randomFromCoords (x, y) {
     const dot = x * 12.9898 + y * 78.233
@@ -544,45 +564,45 @@ function init () {
     }
   }
 
+  try {
+    wordList.toSorted((a, b) => {
+      return simpleJamoBreakdown(b).length - simpleJamoBreakdown(a).length
+    }).forEach((word) => {
+      let x
+      let y
+      let direction
+      let repeated = 0
+      while (true) {
+        x = randomInt(0, width - 1)
+        y = randomInt(0, height - 1)
+        direction = getDirection()
+        const directionCorrected = easyDirection ? ((direction + 6) % 8) : direction
+        const success = writeWord(word, x, y, directionCorrected)
+        if (success) {
+          directionsProbabilityDist[direction]--
+          sum--
+          if (wordCount - directionsProbabilityDist[direction] > wordCount / 3) {
+            sum -= directionsProbabilityDist[direction]
+            directionsProbabilityDist[direction] = 0
+          }
+          break
+        }
+        if (repeated > wordCount ** 2) {
+          throw new Error('The board generation was stuck in impossible state, so the page was reloaded.')
+        }
+        repeated++
+      }
+    })
+  } catch (e) {
+    console.error(e)
+    reset()
+    return
+  }
+
   if (previousGameState) {
     previousGameState[4].forEach(([startX, startY, endX, endY]) => {
       markCompletionAsCompleted(startX, startY, endX, endY)
     })
-  } else {
-    try {
-      wordList.toSorted((a, b) => {
-        return simpleJamoBreakdown(b).length - simpleJamoBreakdown(a).length
-      }).forEach((word) => {
-        let x
-        let y
-        let direction
-        let repeated = 0
-        while (true) {
-          x = randomInt(0, width - 1)
-          y = randomInt(0, height - 1)
-          direction = getDirection()
-          const directionCorrected = easyDirection ? ((direction + 6) % 8) : direction
-          const success = writeWord(word, x, y, directionCorrected)
-          if (success) {
-            directionsProbabilityDist[direction]--
-            sum--
-            if (wordCount - directionsProbabilityDist[direction] > wordCount / 3) {
-              sum -= directionsProbabilityDist[direction]
-              directionsProbabilityDist[direction] = 0
-            }
-            break
-          }
-          if (repeated > wordCount ** 2) {
-            throw new Error('The board generation was stuck in impossible state, so the page was reloaded.')
-          }
-          repeated++
-        }
-      })
-    } catch (e) {
-      console.error(e)
-      reset()
-      return
-    }
   }
 
   // add event listener for dark mode toggle
@@ -772,7 +792,10 @@ function init () {
   document.addEventListener('pointerup', (e) => {
     isRightClick = e.button === 2
     pointerdown.value = false
-    if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1 && (dragStartPos[0] !== dragEndPos[0] || dragStartPos[1] !== dragEndPos[1])) {
+    if (dragStartPos[0] === dragEndPos[0] && dragStartPos[1] === dragEndPos[1]) {
+      currentJamoCompletion?.remove()
+      currentJamoCompletion = null
+    } else if (dragEndPos[0] !== -1 && dragEndPos[1] !== -1) {
       checkJamoCompletion(currentJamoCompletion)
     }
   }, { passive: true })
@@ -877,14 +900,21 @@ function init () {
     jamoBoardElement.style.setProperty('--zoom', Math.min(1, screenWidth / jamoBoardElementWidth))
   }
   resizeToFit()
-  window.addEventListener('resize', resizeToFit)
+  window.addEventListener('resize', resizeToFit, { passive: true })
 
   window.addEventListener('beforeunload', () => {
+    const beforeunload = load('beforeunload', 0)
+    save('beforeunload', beforeunload + 1)
     const currentStateSaved = load('gameState')
     if (currentStateSaved) {
       save('gameState', serializeGameState())
     }
-  })
+  }, { passive: true })
+
+  window.addEventListener('pagehide', () => {
+    const pagehide = load('pagehide', 0)
+    save('pagehide', pagehide + 1)
+  }, { passive: true })
 
   // @TODO: show relevant image for each word after finding it
   // requestIdleCallback(() => {

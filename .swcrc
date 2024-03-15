@@ -1,11 +1,13 @@
 {
-    // Enable minification
-    "minify": true,
-    // Optional, configure minification options
-    "jsc": {
-      "minify": {
-        "compress": true,
-        "mangle": true
-      }
-    }
+  "$schema": "https://json.schemastore.org/swcrc",
+  // Enable minification
+  "minify": true,
+  // Optional, configure minification options
+  "jsc": {
+    "minify": {
+      "compress": true,
+      "mangle": true
+    },
+    "target": "es2015"
   }
+}
