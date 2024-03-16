@@ -1,22 +1,49 @@
-const DO_NOT_CHANGE_KEEP_FALSE = false
-// code to satisfy linter that will be removed at minify
-if (DO_NOT_CHANGE_KEEP_FALSE) {
-  /* eslint-disable no-var */
-  var localStorage = window.localStorage
-  var requestIdleCallback = window.requestIdleCallback
-  var requestAnimationFrame = window.requestAnimationFrame
-  var screen = window.screen
-  /* eslint-enable no-var */
-}
-
+/* eslint-disable no-undef */
 const GAME_VERSION = 4
 const DEBUG = false
+const LOG = false
+const log = LOG ? (a) => { console.log(a); return a } : (a) => a
 const PROFILE = false
 
 const documentParsed = performance.now()
 
 const scriptHTML = document.currentScript.outerHTML
 const initialHTMLWithoutThisScript = document.body.innerHTML.replace(scriptHTML, '')
+
+let boardGenerationRetryCount = 0
+
+// Mapping integers to non-negative integers and vice versa
+function fold (x) {
+  return x >= 0 ? 2 * x : -2 * x - 1
+}
+
+function unfold (y) {
+  return y % 2 === 0 ? y / 2 : -(y + 1) / 2
+}
+
+function pairUnsigned (x, y) {
+  return 0.5 * (x + y) * (x + y + 1) + y
+}
+
+function unpairUnsigned (z) {
+  const w = Math.floor((Math.sqrt(8 * z + 1) - 1) / 2)
+  const t = (w * w + w) / 2
+  const y = z - t
+  const x = w - y
+  return [x, y]
+}
+
+function pairSigned (x, y) {
+  const mappedX = fold(x)
+  const mappedY = fold(y)
+  const cantorResult = pairUnsigned(mappedX, mappedY)
+  return unfold(cantorResult)
+}
+
+function unpairSigned (z) {
+  const cantorInverse = unpairUnsigned(fold(z))
+  return [unfold(cantorInverse[0]), unfold(cantorInverse[1])]
+}
 
 const wordListFull = `사과
 바나나
@@ -105,7 +132,8 @@ const random = {
     this.s2 ^= this.s2 << 13
     this.s2 ^= this.s2 >> 17
     this.s2 ^= this.s2 << 5
-    return (this.s1 ^ this.s2 + 2147483648) / 4294967295
+    log('random.random')
+    return log(((this.s1 ^ this.s2) + 2147483648) / 4294967295)
   }
 }
 
@@ -167,7 +195,8 @@ function init () {
   try {
     previousGameState = deserializeGameState(load('gameState'))
     if (previousGameState) {
-      stageNumber = previousGameState[6]
+      stageNumber = previousGameState.stageNumber
+      stageElement.textContent = stageNumber
     }
   } catch (e) {
     console.error(e)
@@ -176,7 +205,9 @@ function init () {
 
   stageElement.textContent = stageNumber
 
-  random.setSeed(stageNumber)
+  const seed = pairSigned(stageNumber, boardGenerationRetryCount)
+
+  random.setSeed(seed)
 
   const cloned = [...wordListFull]
 
@@ -224,17 +255,21 @@ function init () {
     return [...gs].map(c => c.charCodeAt()).reduce((acc, val) => ((acc >>> 1) | ((acc & 1) << 15)) ^ val, 0)
   }
 
-  function serializeGameState () {
+  function currentState () {
     const completions = Array.from(jamoBoardElement.querySelectorAll('.completion-bar')).filter((elem) => elem !== currentJamoCompletion).map(elem => {
       return `${elem.dataset.start},${elem.dataset.end}`
     }).join()
-    const gsObject = {
+
+    return {
       GAME_VERSION,
       width,
       height,
       completions,
       stageNumber
     }
+  }
+
+  function serializeGameState (gsObject = currentState()) {
     const gsJSONString = JSON.stringify(gsObject)
     return `${gsJSONString}|${calculateChecksum(gsJSONString)}`
   }
@@ -249,32 +284,25 @@ function init () {
     }, [])
   }
 
-  function deserializeGameState (gs) {
-    if (gs === null) {
+  function deserializeGameState (gsStringFull) {
+    if (gsStringFull === null) {
       return null
     }
-    const [gameVersion, words, width, height, jamoBoard, completions, randomHueBase, stageNumber, checksum] = gs.split('|')
-    if (gameVersion * 1 !== GAME_VERSION) {
-      throw new Error('The saved game state is from a different version of the game.')
-    }
-    const expectedChecksum = calculateChecksum(`${gameVersion}|${words}|${width}|${height}|${jamoBoard}|${completions}|${randomHueBase}|${stageNumber}`)
+    const [gsObjectStr, checksum] = gsStringFull.split('|')
+    const expectedChecksum = calculateChecksum(gsObjectStr)
     if (expectedChecksum !== checksum * 1) {
       throw new Error('saved game state is corrupted')
     }
-    if (jamoBoard.length !== width * height) {
-      throw new Error('saved game state is corrupted')
+    const gsObject = JSON.parse(gsObjectStr)
+    if (gsObject.GAME_VERSION !== GAME_VERSION) {
+      throw new Error('The saved game state is from a different version of the game.')
     }
-    return [
-      words.split(','),
-      width * 1,
-      height * 1,
-      jamoBoard,
-      completions
-        ? groupElements(completions.split(',').map(Number), 4)
-        : [],
-      randomHueBase * 1,
-      stageNumber * 1
-    ]
+    if (gsObject.completions) {
+      gsObject.completions = groupElements(gsObject.completions.split(',').map(Number), 4)
+    } else {
+      gsObject.completions = []
+    }
+    return gsObject
   }
 
   function decomposeIntoSimple (char) {
@@ -357,12 +385,14 @@ function init () {
   }
 
   const randomJamo = () => {
-    return simpleJamoList[randomInt(0, simpleJamoList.length - 1)]
+    log(randomJamo.name)
+    return log(simpleJamoList[randomInt(0, simpleJamoList.length - 1)])
   }
 
   const simpleJamoFromWordList = wordList.flatMap(word => [...word.normalize('NFC')].flatMap(decomposeIntoSimple))
   const jamoFromWordList = () => {
-    return simpleJamoFromWordList[randomInt(0, simpleJamoFromWordList.length - 1)]
+    log(jamoFromWordList.name)
+    return log(simpleJamoFromWordList[randomInt(0, simpleJamoFromWordList.length - 1)])
   }
 
   const gap = 0.75
@@ -378,7 +408,7 @@ function init () {
   }
 
   const fillJamoBoard = () => {
-    jamoBoardElement.style.setProperty('--gap', `${gap}em`)
+    jamoBoardElement.style.setProperty('--gap', `${gap}rem`)
     jamoBoardElement.style.setProperty('--width', width)
     jamoBoardElement.style.setProperty('--height', height)
 
@@ -484,15 +514,15 @@ function init () {
     const width = (xMax - xMin + 1) * cellSize + (gap * (xMax - xMin))
     const height = (yMax - yMin + 1) * cellSize + (gap * (yMax - yMin))
 
-    completionBarElement.style.setProperty('--top', `${top}em`)
-    completionBarElement.style.setProperty('--left', `${left}em`)
-    completionBarElement.style.setProperty('--width', `${width}em`)
-    completionBarElement.style.setProperty('--height', `${height}em`)
+    completionBarElement.style.setProperty('--top', `${top}rem`)
+    completionBarElement.style.setProperty('--left', `${left}rem`)
+    completionBarElement.style.setProperty('--width', `${width}rem`)
+    completionBarElement.style.setProperty('--height', `${height}rem`)
 
     const hypot = Math.hypot(width, height) + padding
     const angle = Math.atan2(sdy * height, sdx * width) * 180 / Math.PI
-    completionBarElement.style.setProperty('--thick', `${cellSize + padding}em`)
-    completionBarElement.style.setProperty('--hypot', `${hypot}em`)
+    completionBarElement.style.setProperty('--thick', `${cellSize + padding}rem`)
+    completionBarElement.style.setProperty('--hypot', `${hypot}rem`)
     completionBarElement.style.setProperty('--angle', `${angle}deg`)
     const randomHue = Math.floor(randomFromCoords(startX, startY) * colorSteps) * Math.floor(360 / colorSteps)
     completionBarElement.style.setProperty('--hue', randomHueBase + randomHue)
@@ -506,11 +536,9 @@ function init () {
   const yesButton = stageClearDialog.querySelector('#next-stage')
   const noButton = stageClearDialog.querySelector('#cancel-next-stage')
   yesButton.addEventListener('click', () => {
-    stageNumber++
-    const currentGameState = serializeGameState()
-    const parsed = deserializeGameState(currentGameState)
-    parsed[6] = stageNumber
-    save('gameState', serializeGameState())
+    boardGenerationRetryCount = 0
+    const currentGameState = currentState()
+    save('gameState', serializeGameState({ ...currentGameState, completions: '', stageNumber: currentGameState.stageNumber + 1 }))
     reset()
   }, { passive: true })
   noButton.addEventListener('click', () => {
@@ -536,7 +564,9 @@ function init () {
   }
 
   function randomInt (min, max) {
-    return Math.floor(random.random() * (max - min + 1)) + min
+    log(randomInt.name)
+    log([min, max])
+    return log(Math.floor(random.random() * (max - min + 1)) + min)
   }
 
   const colorSteps = 16
@@ -588,7 +618,8 @@ function init () {
           break
         }
         if (repeated > wordCount ** 2) {
-          throw new Error('The board generation was stuck in impossible state, so the page was reloaded.')
+          boardGenerationRetryCount++
+          throw new Error('Failed to populate a word to the board. Try increasing the size of the board or reducing the number of words. Retrying...')
         }
         repeated++
       }
@@ -600,7 +631,7 @@ function init () {
   }
 
   if (previousGameState) {
-    previousGameState[4].forEach(([startX, startY, endX, endY]) => {
+    previousGameState.completions.forEach(([startX, startY, endX, endY]) => {
       markCompletionAsCompleted(startX, startY, endX, endY)
     })
   }
@@ -784,6 +815,10 @@ function init () {
     }
     pointerdown.value = true
     dragStartPos = calculateCellPosFromCoords(e.clientX, e.clientY)
+    if (dragStartPos[0] < 0 || dragStartPos[0] >= width || dragStartPos[1] < 0 || dragStartPos[1] >= height) {
+      dragStartPos = [-1, -1]
+      return
+    }
     dragEndPos = [-1, -1]
     dragDir = -1
     updateJamoCompletion()
@@ -885,19 +920,21 @@ function init () {
 
   window.serializeGameState = serializeGameState
 
+  const mainElement = document.querySelector('main')
+
   const resizeToFit = () => {
     const screenWidth = screen.availWidth
+    const screenHeight = screen.availHeight
 
-    wordListElement.style.zoom = 1
-    wordListElement.style.fontSize = '1rem'
-    jamoBoardElement.style.setProperty('--zoom', 1)
+    mainElement.style.transform = 'scale(1)'
+    mainElement.style.margin = '0'
 
-    const wordListElementWidth = wordListElement.getBoundingClientRect().width
-    const jamoBoardElementWidth = jamoBoardElement.getBoundingClientRect().width
+    const { width, height } = mainElement.getBoundingClientRect()
 
-    wordListElement.style.zoom = Math.min(1, screenWidth / wordListElementWidth)
-    wordListElement.style.fontSize = `${1 / wordListElement.style.zoom}rem`
-    jamoBoardElement.style.setProperty('--zoom', Math.min(1, screenWidth / jamoBoardElementWidth))
+    const zoomFactor = Math.min(1, screenWidth / width, screenHeight / height)
+
+    mainElement.style.transform = `scale(${zoomFactor})`
+    mainElement.style.margin = `${(height * (zoomFactor - 1)) / 2}px ${(width * (zoomFactor - 1)) / 2}px`
   }
   resizeToFit()
   window.addEventListener('resize', resizeToFit, { passive: true })
@@ -937,11 +974,11 @@ function init () {
     requestIdleCallback(() => {
       const settled = performance.now()
 
-      const t1 = documentParsed - begin // eslint-disable-line no-undef
+      const t1 = documentParsed - begin
       const t2 = jsParsed - documentParsed
       const t3 = gameInitialized - jsParsed
       const t4 = settled - gameInitialized
-      const t5 = settled - begin // eslint-disable-line no-undef
+      const t5 = settled - begin
 
       const perfHistory = load('perfHistory', [])
       perfHistory.push([t1, t2, t3, t4, t5])

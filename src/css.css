@@ -27,36 +27,39 @@ body {
   margin: 0;
 }
 
+#word-list>li {
+  text-align: center;
+  border-radius: 1lh;
+}
+
 /* if a word is marked found, highlight it */
-#word-list>.found {
+#word-list>li.found {
   background-color: oklch(75% 75% calc(var(--hue) * 1deg));
 }
 
 #jamo-board {
   display: grid;
   grid-template-columns: repeat(var(--width), 1fr);
-  gap: calc(var(--gap) * var(--zoom));
+  gap: var(--gap);
   padding: 0;
   margin: 0;
   position: relative;
   aspect-ratio: 1;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
-  contain: layout style;
 }
 
 #jamo-board>i {
   text-align: center;
   display: inline-block;
-  width: calc(var(--size) * var(--zoom));
-  height: calc(var(--size) * var(--zoom));
-  font-size: calc(var(--size) * var(--zoom));
+  width: calc(var(--size));
+  height: calc(var(--size));
+  font-size: var(--size);
   line-height: 1;
   user-select: none;
   cursor: pointer;
   font-style: normal;
   position: relative;
-  contain: layout size style;
 }
 
 #jamo-board>i::after {
@@ -90,8 +93,8 @@ body {
 #jamo-board>i::before {
   content: '';
   display: inline-block;
-  width: calc(var(--size) * 1.414 * var(--zoom));
-  height: calc(var(--size) * 1.414 * var(--zoom));
+  width: calc(var(--size) * 1.414);
+  height: calc(var(--size) * 1.414);
   top: 50%;
   left: 50%;
   border-radius: 50%;
@@ -108,15 +111,13 @@ body {
 #jamo-board>.completion-bar {
   /* remove from grid flow */
   position: absolute;
-  top: calc(var(--top) * var(--zoom));
-  left: calc(var(--left) * var(--zoom));
-  width: calc(var(--width) * var(--zoom));
-  height: calc(var(--height) * var(--zoom));
+  top: calc(var(--top));
+  left: calc(var(--left));
+  width: calc(var(--width));
+  height: calc(var(--height));
 
   /* outline: 1px solid red; */
   pointer-events: none;
-
-  contain: style size;
 }
 
 #jamo-board>.completion-bar::before {
@@ -124,14 +125,14 @@ body {
   content: '';
   position: absolute;
   background-color: oklch(75% 75% calc(var(--hue) * 1deg)); /* Line color */
-  height: calc(var(--thick) * var(--zoom)); /* Line thickness */
+  height: calc(var(--thick)); /* Line thickness */
 
   /* Calculate the bottom-left point of the line */
   top: 50%;
   left: 50%;
 
   /* Length of the line using hypot(), assuming --delta-x and --delta-y are defined */
-  width: calc(var(--hypot) * var(--zoom));
+  width: calc(var(--hypot));
 
   /* Rotate line using atan2(), converting result from radians to degrees */
   transform: translate(-50%, -50%) rotate(var(--angle));
@@ -143,10 +144,7 @@ body {
 
   z-index: -2;
 
-  border-radius: calc(var(--thick) * var(--zoom));
-
-  /* filter: url(#displacementFilter); */
-  contain: strict;
+  border-radius: calc(var(--thick));
 }
 
 nav {
@@ -170,7 +168,6 @@ nav {
   padding: 0;
   view-transition-name: none;
   -webkit-tap-highlight-color: transparent;
-  contain: strict;
 }
 
 .no-transition, .no-transition>* {
@@ -315,4 +312,11 @@ main>* {
 
 #settings-panel::backdrop {
   background: #0004;
+}
+
+.br {
+  display: block;
+  width: 0;
+  height: 1rem;
+  min-height: 1rem;
 }

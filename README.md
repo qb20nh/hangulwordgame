@@ -2,7 +2,7 @@
 
 # ㅁㅗㅇㅏㅊㅏㅈㄱㅣ
 
-[https://git.d0p.dev](https://git.d0p.dev)
+[https://hangul.d0p.dev](https://hangul.d0p.dev)
 
 한글 자모를 조합해 숨겨진 단어를 찾아내는 퍼즐 게임
 
@@ -10,8 +10,8 @@
 
 - [x] Restart game after solving the stage
 - [ ] Add events for settings panel
-- [ ] Seed-based board generation
-  - [ ] Numbered stages(infinitely many)
+- [x] Seed-based board generation
+  - [x] Numbered stages(infinitely many)
 - [ ] Speech API to speak out completed word
 - [x] Cheat prevention (browser find feature)
   - [x] pointer position based tracking instead of using element hover state
