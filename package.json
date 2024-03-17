@@ -11,7 +11,7 @@
 	},
 	"scripts": {
 		"preinstall": "npx only-allow pnpm",
-		"minify:html": "html-minifier-terser --collapse-boolean-attributes --collapse-whitespace --decode-entities --remove-attribute-quotes --remove-comments --remove-redundant-attributes --output index.html src/index.html",
+		"minify:html": "html-minifier-terser --collapse-boolean-attributes --collapse-whitespace --decode-entities --remove-attribute-quotes --remove-comments --remove-redundant-attributes --minify-js --minify-css --output index.html src/index.html",
 		"minify:css": "lightningcss -m --bundle -t \">= 0.25%\" src/css.css -o css.css",
 		"minify:js": "swc src/js.js -s -o js.js",
 		"minify": "run-p minify:*",

@@ -2,6 +2,7 @@
 /* eslint-disable no-undef */
 /* eslint-disable no-throw-literal */
 ;(function () {
+  'use strict'
   const noop = () => { throw 'This function should not be called' }
   function isNative (fn) {
     const matches = (parts, str) => {
@@ -62,10 +63,9 @@
     const descriptors = []
     throwIfNotNative(descriptors.push, 'push')
     descriptors.push(Object.getOwnPropertyDescriptors(globalThis))
-    let visitedIndex = 0
 
-    while (visitedIndex < descriptors.length) {
-      const descriptor = descriptors[visitedIndex++]
+    for (let visitedIndex = 0; visitedIndex < descriptors.length; visitedIndex++) {
+      const descriptor = descriptors[visitedIndex]
       const value = descriptor.value ?? {}
       const isFunction = typeof value === 'function'
       const isObject = typeof value === 'object'
