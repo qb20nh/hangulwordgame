@@ -6,5 +6,6 @@
         "octilinear",
         "oklch",
         "wordsets"
-    ]
+    ],
+    "svg.preview.background": "transparent"
 }

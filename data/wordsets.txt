@@ -1,0 +1,14 @@
+veggies
+animals
+foods
+places
+#nature
+#occupations
+#sports
+#transportation
+#science
+#history
+#hobbies
+#instruments
+#fashion
+#celebrities

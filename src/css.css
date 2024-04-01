@@ -346,3 +346,7 @@ main>* {
   height: 1rem;
   min-height: 1rem;
 }
+
+nav>div:has(#stage) {
+  white-space: nowrap;
+}

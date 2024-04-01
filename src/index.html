@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="css.css">
   <link rel="manifest" href="hangulwordgame.webmanifest">
   <link rel="icon" href="images/icon.svg">
+  <link rel="preload" href="js.js" as="script" integrity="sha256-ziR3SVY8XvSz/vee94On1FyZUJs8f009TCHAYRwMc3s=" crossorigin="anonymous">
+  <link rel="preload" href="data/wordsets.txt" as="fetch" crossorigin="anonymous">
 </head>
 <body>
   <script>const begin = performance.now()</script>
@@ -17,7 +19,7 @@
       <button id="dark-mode-toggle" title="다크 모드 전환" data-mode="system" data-mode-options="system|dark|light"><span id="sun"></span><span id="moon"></span></button>
     </nav>
     <img src="images/icon.svg">
-    <div style="white-space: nowrap;"><span id="stage">1</span>판</div>
+    <div><span id="stage">1</span>판</div>
   </header>
   <main>
     <template id="word-template">
@@ -75,7 +77,6 @@
     <button type="button" id="next-stage" title="네">➡️네</button>
     <button type="button" id="cancel-next-stage" title="아니오">↩️아니오</button>
   </dialog>
-  <script src="js.js" integrity="sha256-wWyppbWegtnMMLBgsiIXOp4ftYvaQRG8OWFGLC7s0pw=" crossorigin="anonymous"></script>
-  <script src="js.js"></script>
+  <script src="js.js" integrity="sha256-ziR3SVY8XvSz/vee94On1FyZUJs8f009TCHAYRwMc3s=" crossorigin="anonymous"></script>
 </body>
 </html>
