@@ -503,12 +503,17 @@
       stageClearDialog.close()
     }, { passive: true })
 
+    function prefetchNextStageWordset () {
+      loadWordsetForStage(stageNumber + 1)
+    }
+
     function markWordAsFound (wordElement, completionBarElement) {
       foundWords++
       wordElement.style.setProperty('--hue', completionBarElement.style.getPropertyValue('--hue'))
       wordElement.classList.add('found')
       if (foundWords === wordCount) {
         stageClearDialog.showModal()
+        prefetchNextStageWordset()
       }
     }
 
@@ -911,6 +916,37 @@
       save('pagehide', pagehide + 1)
     }, { passive: true })
 
+    document.getElementById('show-settings-panel').addEventListener('click', () => {
+      document.getElementById('settings-panel').showModal()
+    })
+
+    const minimumPressDuration = 2000
+
+    let timeout = null
+
+    const clearButton = document.getElementById('clear-game-state')
+    clearButton.addEventListener('pointerdown', () => {
+      timeout = setTimeout(() => {
+        clear('gameState')
+        location.reload()
+      }, minimumPressDuration)
+    })
+    clearButton.addEventListener('pointerup', () => {
+      clearTimeout(timeout)
+    })
+    clearButton.addEventListener('pointerleave', () => {
+      clearTimeout(timeout)
+    })
+
+    // fix dialog forms with sandboxed document
+    const dialogCloseButtons = document.querySelectorAll('form[method=dialog]>button[type=submit]')
+    dialogCloseButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault()
+        button.closest('dialog')?.close?.()
+      })
+    })
+
     // @TODO: show relevant image for each word after finding it
     // requestIdleCallback(() => {
     //   // preload images
@@ -972,7 +1008,9 @@
   function average (arr) {
     return arr.reduce((acc, val) => acc + val, 0) / arr.length
   }
-  window.average = average
+  if (DEBUG) {
+    window.average = average
+  }
 
   function median (arr) {
     const sorted = arr.slice().sort((a, b) => a - b)
@@ -982,21 +1020,26 @@
     }
     return sorted[mid]
   }
-  window.median = median
+  if (DEBUG) {
+    window.median = median
+  }
 
   function getCurrentFunctionName () {
     const currentStackRaw = new Error().stack
     const callerLine = currentStackRaw.split('\n').slice(1)[1]
     return callerLine.match(/at (\w+)/)[1]
   }
-  window.getCurrentFunctionName = getCurrentFunctionName
+  if (DEBUG) {
+    window.getCurrentFunctionName = getCurrentFunctionName
+  }
 
   const jsParsed = performance.now()
 
   init()
 
   function registerKonamiCodeHandler () {
-    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'Enter']
+    const [u, d, l, r] = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+    const konamiCode = [u, u, d, d, l, r, l, r, 'b', 'a', 'Enter']
     let konamiCodeIndex = 0
     const handler = async (e) => {
       if (e.key === konamiCode[konamiCodeIndex]) {
@@ -1011,13 +1054,11 @@
     }
     window.addEventListener('keydown', handler, { passive: true })
   }
-  registerKonamiCodeHandler()
+  if (DEBUG) {
+    registerKonamiCodeHandler()
+  }
 
   function showCrazyShit () {
     console.log('showing lunatic text')
   }
-
-  document.getElementById('show-settings-panel').addEventListener('click', () => {
-    document.getElementById('settings-panel').showModal()
-  })
 })()
