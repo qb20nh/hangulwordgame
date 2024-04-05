@@ -305,18 +305,25 @@ main>* {
 }
 
 #file-wrapper::after {
-  content: attr(data-text); /* Text below emoji */
+  content: attr(data-text);
+  font-size: 14px;
   display: block;
-  font-size: 14px; /* Adjust text size */
+  bottom: 50%;
+  position: absolute;
+  width: 100%;
+  translate: 0 calc(50% + 1.5lh);
+}
+#file-wrapper[data-filename]::after {
+  content: attr(data-filename);
 }
 
 ::backdrop {
   background: #0004;
 }
 
-
 #clear-game-state {
   position: relative;
+  user-select: none;
   --pressed: 0;
 }
 
@@ -349,4 +356,39 @@ main>* {
 
 nav>div:has(#stage) {
   white-space: nowrap;
+}
+
+body:has(dialog[open]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+dialog[open].bump {
+  animation: bump linear 0.2s;
+}
+
+@keyframes bump {
+  0% {
+    transform: scale(1.01);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+:has(input.success-report) {
+  position: relative;
+}
+
+input.success-report {
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-align: center;
 }

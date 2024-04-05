@@ -92,6 +92,21 @@
     }
   }
 
+  function saveGameStateWhenIdle () {
+    requestIdleCallback(() => {
+      saveGameState()
+    })
+  }
+
+  function saveGameState () {
+    const currentStateSaved = load('gameState')
+    if (currentStateSaved) {
+      save('gameState', serializeGameState())
+    }
+  }
+
+  const eventsToSave = ['keyup', 'pointerup', 'pointercancel', 'scrollend']
+
   async function init () {
     'use strict'
     if (window.hwgInitialized) {
@@ -902,22 +917,130 @@
     resizeToFit()
     window.addEventListener('resize', resizeToFit, { passive: true })
 
+    eventsToSave.forEach(event => {
+      document.addEventListener(event, saveGameStateWhenIdle, { passive: true })
+    })
+
     window.addEventListener('beforeunload', () => {
-      const beforeunload = load('beforeunload', 0)
-      save('beforeunload', beforeunload + 1)
-      const currentStateSaved = load('gameState')
-      if (currentStateSaved) {
-        save('gameState', serializeGameState())
-      }
+      saveGameState()
     }, { passive: true })
 
-    window.addEventListener('pagehide', () => {
-      const pagehide = load('pagehide', 0)
-      save('pagehide', pagehide + 1)
-    }, { passive: true })
+    function u2b (str) {
+      const encoder = new TextEncoder()
+      const encodedData = encoder.encode(str)
+      const binaryString = String.fromCharCode(...encodedData)
+      return btoa(binaryString)
+    }
+
+    function b2u (base64) {
+      const binaryString = atob(base64)
+      const encodedData = new Uint8Array(binaryString.split('').map(char => char.charCodeAt(0)))
+      const decoder = new TextDecoder()
+      return decoder.decode(encodedData)
+    }
+
+    const settingsPanel = document.getElementById('settings-panel')
+    const exportText = document.getElementById('export-game-state-plaintext')
 
     document.getElementById('show-settings-panel').addEventListener('click', () => {
-      document.getElementById('settings-panel').showModal()
+      settingsPanel.showModal()
+      // base64 encode the game state
+      saveGameState()
+      exportText.value = u2b(load('gameState'))
+    })
+
+    const successReportButtons = document.querySelectorAll('button[data-success-report]')
+    successReportButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        if (!button.successReport) {
+          const successReport = document.getElementById('success-report-template').content.cloneNode(true).querySelector('input')
+          successReport.setCustomValidity(button.dataset.successReport)
+          button.appendChild(successReport)
+          button.successReport = successReport
+        }
+        button.successReport.reportValidity()
+      })
+    })
+
+    document.getElementById('copy-game-state-plaintext').addEventListener('click', () => {
+      navigator.clipboard.writeText(exportText.value)
+    })
+
+    document.getElementById('download-game-state-plaintext').addEventListener('click', () => {
+      const a = document.createElement('a')
+      const blob = new Blob([exportText.value], { type: 'text/plain' })
+      a.href = URL.createObjectURL(blob)
+      a.download = `save-${new Date().toISOString().replace(/\D/g, '')}.hwgsave`
+      a.hidden = true
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(a.href)
+    })
+
+    const importText = document.getElementById('import-game-state-plaintext')
+
+    const fileWrapperLabel = document.getElementById('file-wrapper')
+
+    function reportError (message) {
+      importText.setCustomValidity(message)
+      importText.reportValidity()
+    }
+
+    document.getElementById('select-game-state-file').addEventListener('input', (e) => {
+      const file = e.target.files[0]
+      fileWrapperLabel.dataset.filename = file.name
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target.result
+        try {
+          const gameStateText = b2u(result)
+          deserializeGameState(gameStateText)
+        } catch (err) {
+          console.error('Failed to parse game state from file', err)
+          reportError('선택한 파일의 구문 분석에 실패했습니다.')
+        }
+        importText.value = result
+      }
+      reader.readAsText(file)
+    })
+
+    document.getElementById('apply-imported-game-state').addEventListener('click', () => {
+      try {
+        const gameStateText = b2u(importText.value)
+        deserializeGameState(gameStateText)
+        save('gameState', gameStateText)
+        reset()
+      } catch (err) {
+        console.error('Failed to parse game state from text', err)
+        reportError('올바른 형식의 게임 상태 텍스트가 아닙니다.')
+      }
+    })
+
+    document.querySelectorAll('dialog').forEach(dialog => {
+      dialog.addEventListener(
+        'click',
+        (event) => {
+          const rect = dialog.getBoundingClientRect()
+          if (!dialog.open) {
+            return
+          }
+          if (rect.left > event.clientX ||
+              rect.right < event.clientX ||
+              rect.top > event.clientY ||
+              rect.bottom < event.clientY
+          ) {
+            // show bump animation
+            dialog.classList.remove('bump')
+            requestAnimationFrame(() => {
+              dialog.classList.add('bump')
+            })
+          }
+        }
+      )
+      dialog.addEventListener('close', () => {
+        dialog.classList.remove('bump')
+      })
     })
 
     const minimumPressDuration = 2000
@@ -925,6 +1048,9 @@
     let timeout = null
 
     const clearButton = document.getElementById('clear-game-state')
+    clearButton.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+    })
     clearButton.addEventListener('pointerdown', () => {
       timeout = setTimeout(() => {
         clear('gameState')
@@ -986,6 +1112,11 @@
     children.forEach(child => child.remove())
     document.body.innerHTML = initialHTMLWithoutThisScript
     window.hwgInitialized = false
+
+    eventsToSave.forEach(event => {
+      document.removeEventListener(event, saveGameStateWhenIdle)
+    })
+
     init()
   }
 
