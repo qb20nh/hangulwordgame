@@ -487,16 +487,25 @@
       const width = (xMax - xMin + 1) * cellSize + (gap * (xMax - xMin))
       const height = (yMax - yMin + 1) * cellSize + (gap * (yMax - yMin))
 
+      const hypot = Math.hypot(width, height) + padding
+      const angle = Math.atan2(sdy * height, sdx * width) * 180 / Math.PI
+
+      const prevAngle = completionBarElement.style.getPropertyValue('--angle').match(/(\d+)deg/)?.[1] * 1
+
+      if (isNaN(prevAngle) || prevAngle === angle) {
+        completionBarElement.classList.remove('no-transition')
+      } else {
+        completionBarElement.classList.add('no-transition')
+      }
       completionBarElement.style.setProperty('--top', `${top}rem`)
       completionBarElement.style.setProperty('--left', `${left}rem`)
       completionBarElement.style.setProperty('--width', `${width}rem`)
       completionBarElement.style.setProperty('--height', `${height}rem`)
 
-      const hypot = Math.hypot(width, height) + padding
-      const angle = Math.atan2(sdy * height, sdx * width) * 180 / Math.PI
       completionBarElement.style.setProperty('--thick', `${cellSize + padding}rem`)
       completionBarElement.style.setProperty('--hypot', `${hypot}rem`)
       completionBarElement.style.setProperty('--angle', `${angle}deg`)
+
       const randomHue = Math.floor(randomFromCoords(startX, startY) * colorSteps) * Math.floor(360 / colorSteps)
       completionBarElement.style.setProperty('--hue', randomHueBase + randomHue)
 
@@ -752,6 +761,21 @@
       })
     }
 
+    /**
+     *
+     * @param {HTMLElement} jamoCompletionElement
+     */
+    function removeJamoCompletion (jamoCompletionElement) {
+      jamoCompletionElement.animate({
+        opacity: 0
+      }, {
+        duration: 150,
+        easing: 'ease-out'
+      }).finished.then(() => {
+        jamoCompletionElement.remove()
+      })
+    }
+
     function checkJamoCompletion (jamoCompletionElement) {
       try {
         if (jamoCompletionElement === null) {
@@ -760,12 +784,12 @@
         const [startX, startY] = jamoCompletionElement.dataset.start.split(',').map(Number)
         const [endX, endY] = jamoCompletionElement.dataset.end.split(',').map(Number)
         if (startX === endX && startY === endY) {
-          jamoCompletionElement.remove()
+          removeJamoCompletion(jamoCompletionElement)
           return
         }
         const dir = isOctilinear([startX, startY], [endX, endY])
         if (dir === -1) {
-          jamoCompletionElement.remove()
+          removeJamoCompletion(jamoCompletionElement)
           return
         }
         const jamoSequence = completionToJamoSequence(startX, startY, endX, endY)
@@ -774,13 +798,13 @@
           const wordElement = wordListElement.querySelector(`li[data-word="${foundWord}"]`)
           if (wordElement) {
             if (wordElement.classList.contains('found')) {
-              jamoCompletionElement.remove()
+              removeJamoCompletion(jamoCompletionElement)
             } else {
               markWordAsFound(wordElement, jamoCompletionElement)
             }
           }
         } else {
-          jamoCompletionElement.remove()
+          removeJamoCompletion(jamoCompletionElement)
         }
       } finally {
         currentJamoCompletion = null
