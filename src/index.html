@@ -26,7 +26,7 @@
     <template id="word-template">
       <li data-word=""></li>
     </template>
-    <ul id="word-list"></ul>
+    <ul id="word-list" class="notranslate"></ul>
     <div class="br"></div>
     <template id="jamo-template">
       <i></i>
@@ -34,7 +34,7 @@
     <template id="completion-bar-template">
       <div class="completion-bar"></div>
     </template>
-    <section id="jamo-board">
+    <section id="jamo-board" class="notranslate">
     </section>
   </main>
   <footer>
@@ -49,7 +49,7 @@
         <textarea id="export-game-state-plaintext" class="noresize" readonly cols="32" rows="4" title="게임 상태 텍스트"></textarea>
         <br>
         <button type="button" id="copy-game-state-plaintext" title="복사" data-success-report="복사되었습니다!">📋복사</button>
-        <button type="button" id="download-game-state-plaintext" title="다운로드">⬇️다운로드</button>
+        <button type="button" id="download-game-state-plaintext" title="다운로드">⬇️&#xFE0F;다운로드</button>
       </fieldset>
       <fieldset>
         <legend>게임 상태 불러오기</legend>
@@ -75,7 +75,7 @@
   <dialog id="stage-clear-dialog" class="modal">
     <h2>모두 찾음!</h2>
     <p>다음 판으로 넘어가시겠습니까?</p>
-    <button type="button" id="next-stage" title="네">➡️네</button>
+    <button type="button" id="next-stage" title="네">➡️&#xFE0F;네</button>
     <button type="button" id="cancel-next-stage" title="아니오">↩️아니오</button>
   </dialog>
   <template id="success-report-template">
