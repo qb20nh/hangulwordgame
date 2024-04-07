@@ -945,8 +945,15 @@
       document.addEventListener(event, saveGameStateWhenIdle, { passive: true })
     })
 
+    function saveHistoryState () {
+      if (history.state) {
+        save('historyState', history.state)
+      }
+    }
+
     window.addEventListener('beforeunload', () => {
       saveGameState()
+      saveHistoryState()
     }, { passive: true })
 
     function u2b (str) {
@@ -968,7 +975,9 @@
 
     document.getElementById('show-settings-panel').addEventListener('click', () => {
       settingsPanel.showModal()
-      // base64 encode the game state
+    })
+
+    document.getElementById('settings-panel').addEventListener('open', () => {
       saveGameState()
       exportText.value = u2b(load('gameState'))
     })
@@ -1041,7 +1050,23 @@
       }
     })
 
+    const dialogOpenEvent = new CustomEvent('open')
+
+    const dialogOpenObserver = new MutationObserver((mutations) => {
+      mutations.forEach(({ target, type, attributeName }) => {
+        if (type === 'attributes' && attributeName === 'open' && target.open) {
+          target.dispatchEvent(dialogOpenEvent)
+        }
+      })
+    })
+
     document.querySelectorAll('dialog').forEach(dialog => {
+      const { id } = dialog
+      dialogOpenObserver.observe(dialog, {
+        attributes: true,
+        attributeFilter: ['open'],
+        subtree: false
+      })
       dialog.addEventListener(
         'click',
         (event) => {
@@ -1062,8 +1087,19 @@
           }
         }
       )
+      dialog.addEventListener('open', () => {
+        if (location.hash !== `#${id}`) {
+          const url = `#${id}`
+          history.pushState({ open: id, url }, '', url)
+        }
+      })
+
       dialog.addEventListener('close', () => {
         dialog.classList.remove('bump')
+
+        const url = new URL(location)
+        url.hash = ''
+        history.pushState({ open: null, url: url.toString() }, '', url)
       })
     })
 
@@ -1129,6 +1165,14 @@
         save('perfHistory', perfHistory)
       })
     }
+
+    // load saved history state
+    const historyState = load('historyState')
+    if (historyState?.url) {
+      history.replaceState(historyState, '', historyState.url)
+    }
+
+    handleHashChange(location.hash.slice(1))
   }
 
   function reset () {
@@ -1191,6 +1235,19 @@
   const jsParsed = performance.now()
 
   init()
+
+  function handleHashChange (hash) {
+    if (hash) {
+      document.getElementById(hash)?.show?.()
+    } else {
+      document.querySelector('dialog[open]')?.close?.()
+    }
+  }
+
+  // add event listener to window.location
+  window.addEventListener('popstate', (e) => {
+    handleHashChange(e.state.open)
+  })
 
   function registerKonamiCodeHandler () {
     const [u, d, l, r] = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
