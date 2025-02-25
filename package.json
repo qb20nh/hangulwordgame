@@ -5,13 +5,13 @@
 		"chokidar": "^3.6.0",
 		"chokidar-cli": "^3.0.0",
 		"html-minifier-terser": "^7.2.0",
-		"lightningcss-cli": "^1.24.0",
+		"lightningcss-cli": "^1.29.1",
 		"npm-run-all": "^4.1.5",
 		"standard": "^17.1.0"
 	},
 	"scripts": {
 		"preinstall": "npx only-allow pnpm",
-		"minify:html": "html-minifier-terser --collapse-boolean-attributes --collapse-whitespace --decode-entities --remove-attribute-quotes --remove-comments --remove-redundant-attributes --minify-js --minify-css --output index.html src/index.html",
+		"minify:html": "html-minifier-terser --collapse-boolean-attributes --collapse-whitespace --decode-entities --remove-attribute-quotes --remove-redundant-attributes --minify-js --minify-css --output index.html src/index.html",
 		"minify:css": "lightningcss -m --bundle -t \">= 0.25%\" src/css.css -o css.css",
 		"minify:js": "swc src/js.js -s -o js.js",
 		"minify": "run-p minify:*",
@@ -19,5 +19,6 @@
 		"watch:css": "npx csso src/css.css --watch -s css.css.map -o css.css",
 		"watch:js": "npx swc src/js.js -s -w -o js.js",
 		"dev": "run-p watch:*"
-	}
+	},
+	"packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
 }
