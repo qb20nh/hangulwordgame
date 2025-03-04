@@ -58,11 +58,11 @@
     return (await fetchBody(url)).split('\n').filter(s => !s.startsWith('#')).map(s => s.trim())
   }
 
-  const wordsetNames = await fetchLines('/data/wordsets.txt')
+  const wordsetNames = await fetchLines('data/wordsets.txt')
   const wordsets = []
 
   async function loadWordset (wordsetName) {
-    const wordset = await fetchLines(`/data/wordsets/${wordsetName}.txt`)
+    const wordset = await fetchLines(`data/wordsets/${wordsetName}.txt`)
     wordsets.push(wordset)
     return wordset
   }
